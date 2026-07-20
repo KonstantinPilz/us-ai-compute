@@ -54,15 +54,16 @@
   .subtitle { color: var(--text-2); font-size: 13.5px; margin: 0 0 2px; line-height: 1.45; max-width: 430px; }
   .subtitle a { color: inherit; }
 
-  .toggle { display: inline-flex; flex-wrap: wrap; flex-shrink: 0; margin-top: 2px; margin-left: auto; justify-content: flex-end; }
-  .toggle button {
-    appearance: none; border: 1px solid var(--border); background: var(--control-bg); margin-left: -1px;
-    color: var(--text-2); font: inherit; font-size: 12px; padding: 4px 9px; cursor: pointer; white-space: nowrap;
+  #mode-select {
+    flex-shrink: 0; margin-top: 2px; margin-left: auto;
+    appearance: none; -webkit-appearance: none;
+    border: 1px solid var(--border); border-radius: 3px; background: var(--control-bg);
+    color: var(--text); font: inherit; font-size: 12px; font-weight: 500;
+    padding: 4px 26px 4px 9px; cursor: pointer;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23999999' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 9px center;
   }
-  .toggle button:first-child { margin-left: 0; border-radius: 3px 0 0 3px; }
-  .toggle button:last-child { border-radius: 0 3px 3px 0; }
-  .toggle button.active { background: var(--control-active); color: var(--text); font-weight: 700; }
-  .toggle button:focus-visible { outline: 2px solid var(--bar); outline-offset: 1px; }
+  #mode-select:focus-visible { outline: 2px solid var(--bar); outline-offset: 1px; }
 
   .mode-note { color: var(--text-2); font-size: 12.5px; margin: 8px 0 2px; min-height: 1.3em; line-height: 1.45; }
   #chart { width: 100%; margin-top: 2px; }
@@ -115,11 +116,11 @@
       <h1>US AI chip owners, end of 2025</h1>
       <p class="subtitle">Cumulative AI-chip installed base in GB300-equivalents — medians and 90%&nbsp;confidence intervals</p>
     </div>
-    <div class="toggle" role="tablist" aria-label="Conversion mode">
-      <button id="btn-train_fp8" class="active">FP8 FLOP/s</button>
-      <button id="btn-train_fp4">FP4 FLOP/s</button>
-      <button id="btn-inference">Memory Bandwidth</button>
-    </div>
+    <select id="mode-select" aria-label="Conversion mode">
+      <option value="train_fp8" selected>FP8 FLOP/s</option>
+      <option value="train_fp4">FP4 FLOP/s</option>
+      <option value="inference">Memory Bandwidth</option>
+    </select>
   </header>
 
   <p class="mode-note" id="mode-note"></p>
@@ -308,15 +309,11 @@ function showTip(o, ev) {
 function hideTip() { tooltipEl.style.display = "none"; }
 document.addEventListener("click", ev => { if (!ev.target.closest("#svg-main")) hideTip(); });
 
-for (const key of Object.keys(MODES)) {
-  document.getElementById("btn-" + key).addEventListener("click", () => {
-    mode = key;
-    for (const k of Object.keys(MODES))
-      document.getElementById("btn-" + k).classList.toggle("active", k === key);
-    hideTip();
-    render(true);
-  });
-}
+document.getElementById("mode-select").addEventListener("change", ev => {
+  mode = ev.target.value;
+  hideTip();
+  render(true);
+});
 window.addEventListener("resize", () => render(false));
 
 // ---- Methodology section ----
