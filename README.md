@@ -4,9 +4,9 @@ Interactive figure: cumulative AI-chip installed base of the seven US owners Epo
 (Microsoft, Google, Meta, Amazon, Oracle, CoreWeave, xAI) at end of 2025, converted to
 GB300-equivalents, with 90% CIs and a three-mode toggle:
 
-1. **Training (FP8)** — dense FP8 FLOP/s ÷ GB300 FP8 (5 PFLOP/s); no-FP8 chips use FP16/BF16, Google TPUs without FP8 use INT8.
-2. **Training (FP4)** — dense FP4 ÷ GB300 FP4 (15 PFLOP/s), falling back to the FP8-chain value.
-3. **Inference** — memory bandwidth ÷ GB300's 8 TB/s.
+1. **Training & Inference Prefill FP8** — dense FP8 FLOP/s ÷ GB300 FP8 (5 PFLOP/s); no-FP8 chips use FP16/BF16, Google TPUs without FP8 use INT8.
+2. **Training & Inference Prefill FP4** — dense FP4 ÷ GB300 FP4 (15 PFLOP/s), falling back to the FP8-chain value.
+3. **Inference Decode** — memory bandwidth ÷ GB300's 8 TB/s.
 
 **Live site:** https://konstantinpilz.github.io/us-ai-compute/
 
