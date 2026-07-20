@@ -343,10 +343,9 @@ function buildSegs(o) {
     rect.setAttribute("width", w); rect.setAttribute("height", BAR_H);
     rect.setAttribute("fill-opacity", op);
     r.segsG.appendChild(rect);
-    const pct = Math.round(s.v / total * 100) + "%";
     const short = SHORT_CHIP[s.chip] || s.chip;
     const fits = t => t.length * 5.2 + 6 < w;
-    const label = [`${s.chip} ${pct}`, s.chip, `${short} ${pct}`, short].find(fits) || null;
+    const label = [s.chip, short].find(fits) || null;
     if (label) {
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
       t.setAttribute("class", "seg-label " + (op >= 0.7 ? "on-dark" : "on-light"));
