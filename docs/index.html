@@ -4,90 +4,108 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>US AI chip owners in GB300e — end of 2025</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
     color-scheme: light;
-    --surface-1: #fcfcfb;
-    --surface-2: #f2f2f0;
-    --text-primary: #0b0b0b;
-    --text-secondary: #52514e;
-    --text-muted: #8a897f;
-    --series-1: #2a78d6;
-    --grid: #e4e4e0;
-    --whisker: #52514e;
-    --border: #d9d9d4;
+    --bg: #ffffff;
+    --text: #333333;
+    --text-2: #666666;
+    --text-3: #999999;
+    --bar: #1d81a2;
+    --bar-hover: #15607a;
+    --grid: #e8e8e8;
+    --zero: #b0b0b0;
+    --whisker: #333333;
+    --border: #dddddd;
+    --control-bg: #ffffff;
+    --control-active: #f1f1f1;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       color-scheme: dark;
-      --surface-1: #1a1a19;
-      --surface-2: #242423;
-      --text-primary: #ffffff;
-      --text-secondary: #c3c2b7;
-      --text-muted: #8a897f;
-      --series-1: #3987e5;
-      --grid: #333331;
-      --whisker: #c3c2b7;
-      --border: #3a3a37;
+      --bg: #1f1f1f;
+      --text: #e0e0e0;
+      --text-2: #a8a8a8;
+      --text-3: #7d7d7d;
+      --bar: #2e94bd;
+      --bar-hover: #4fb0d6;
+      --grid: #383838;
+      --zero: #5a5a5a;
+      --whisker: #cccccc;
+      --border: #444444;
+      --control-bg: #1f1f1f;
+      --control-active: #333333;
     }
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    background: var(--surface-1);
-    color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Roboto, -apple-system, "Segoe UI", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 40px; }
-  header { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; justify-content: space-between; }
-  h1 { font-size: 22px; margin: 0 0 6px; font-weight: 650; letter-spacing: -0.01em; }
-  .subtitle { color: var(--text-secondary); font-size: 14px; margin: 0; max-width: 560px; line-height: 1.45; }
+  .wrap { max-width: 660px; margin: 0 auto; padding: 22px 16px 30px; }
+  header { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-start; justify-content: space-between; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 700; line-height: 1.25; color: var(--text); }
+  .subtitle { color: var(--text-2); font-size: 13.5px; margin: 0 0 2px; line-height: 1.45; max-width: 430px; }
   .subtitle a { color: inherit; }
 
-  .toggle { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 3px; flex-shrink: 0; }
+  .toggle { display: inline-flex; flex-shrink: 0; margin-top: 2px; margin-left: auto; }
   .toggle button {
-    appearance: none; border: 0; background: transparent; color: var(--text-secondary);
-    font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap;
+    appearance: none; border: 1px solid var(--border); border-left-width: 0; background: var(--control-bg);
+    color: var(--text-2); font: inherit; font-size: 12px; padding: 4px 9px; cursor: pointer; white-space: nowrap;
   }
-  .toggle button.active { background: var(--surface-1); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
-  .toggle button:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
+  .toggle button:first-child { border-left-width: 1px; border-radius: 3px 0 0 3px; }
+  .toggle button:last-child { border-radius: 0 3px 3px 0; }
+  .toggle button.active { background: var(--control-active); color: var(--text); font-weight: 700; }
+  .toggle button:focus-visible { outline: 2px solid var(--bar); outline-offset: 1px; }
 
-  .mode-note { color: var(--text-secondary); font-size: 13px; margin: 14px 0 4px; min-height: 1.3em; }
-  #chart { width: 100%; margin-top: 4px; }
+  .mode-note { color: var(--text-2); font-size: 12.5px; margin: 8px 0 2px; min-height: 1.3em; line-height: 1.45; }
+  #chart { width: 100%; margin-top: 2px; }
   svg text { font-family: inherit; }
 
-  .bar-rect { fill: var(--series-1); transition: width .45s ease, x .45s ease; }
+  .bar-rect { fill: var(--bar); transition: width .45s ease, x .45s ease; }
   .row-g { transition: transform .45s ease; }
-  .grid-line { stroke: var(--grid); stroke-width: 1; }
-  .axis-label { fill: var(--text-muted); font-size: 11.5px; }
-  .owner-label { fill: var(--text-primary); font-size: 13px; font-weight: 550; }
-  .value-label { fill: var(--text-secondary); font-size: 12.5px; }
-  .whisker { stroke: var(--whisker); stroke-width: 1.5; fill: none; }
+  .row-g.hover .bar-rect { fill: var(--bar-hover); }
+  .grid-line { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
+  .zero-line { stroke: var(--zero); stroke-width: 1; shape-rendering: crispEdges; }
+  .axis-label { fill: var(--text-3); font-size: 11px; }
+  .owner-label { fill: var(--text); font-size: 12.5px; }
+  .value-label { fill: var(--text); font-size: 12.5px; font-weight: 700; }
+  .whisker { stroke: var(--whisker); stroke-width: 1.2; fill: none; opacity: .85; }
 
   #tooltip {
     position: fixed; pointer-events: none; z-index: 10; display: none;
-    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18); padding: 10px 12px; font-size: 12.5px; max-width: 320px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 3px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15); padding: 8px 10px; font-size: 12px; max-width: 300px;
   }
-  #tooltip h3 { margin: 0 0 6px; font-size: 13px; }
+  #tooltip h3 { margin: 0 0 2px; font-size: 12.5px; font-weight: 700; color: var(--text); }
+  #tooltip .tt-ci { color: var(--text-2); margin: 0 0 5px; }
   #tooltip table { border-collapse: collapse; width: 100%; }
-  #tooltip td { padding: 1.5px 0; color: var(--text-secondary); }
-  #tooltip td:nth-child(2), #tooltip td:nth-child(3) { text-align: right; padding-left: 14px; font-variant-numeric: tabular-nums; }
-  #tooltip .tt-total td { border-top: 1px solid var(--border); color: var(--text-primary); font-weight: 600; padding-top: 4px; }
+  #tooltip td { padding: 1px 0; color: var(--text-2); }
+  #tooltip td:nth-child(2), #tooltip td:nth-child(3) { text-align: right; padding-left: 12px; font-variant-numeric: tabular-nums; }
+  #tooltip .tt-total td { border-top: 1px solid var(--border); color: var(--text); font-weight: 700; padding-top: 3px; }
 
-  .fine { color: var(--text-muted); font-size: 12.5px; line-height: 1.5; margin-top: 10px; }
+  .fine { color: var(--text-3); font-size: 11.5px; line-height: 1.5; margin-top: 8px; }
   .fine a { color: inherit; }
-  details { margin-top: 26px; border-top: 1px solid var(--border); padding-top: 14px; }
-  summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--text-primary); }
-  .method { font-size: 13.5px; color: var(--text-secondary); line-height: 1.55; max-width: 820px; }
-  .method h4 { color: var(--text-primary); font-size: 13.5px; margin: 18px 0 6px; }
+  details { margin-top: 14px; }
+  summary { cursor: pointer; font-size: 11.5px; color: var(--text-3); }
+  .method { font-size: 12.5px; color: var(--text-2); line-height: 1.55; margin-top: 8px; }
+  .method h4 { color: var(--text); font-size: 12.5px; margin: 14px 0 4px; }
   .method a { color: inherit; }
-  .method table { border-collapse: collapse; margin: 8px 0; font-size: 12.5px; width: 100%; }
-  .method th { text-align: left; font-weight: 650; color: var(--text-primary); border-bottom: 1px solid var(--border); padding: 4px 10px 4px 0; }
-  .method td { border-bottom: 1px solid var(--grid); padding: 4px 10px 4px 0; font-variant-numeric: tabular-nums; }
+  .method table { border-collapse: collapse; margin: 6px 0; font-size: 11.5px; width: 100%; }
+  .method th { text-align: left; font-weight: 700; color: var(--text); border-bottom: 1px solid var(--border); padding: 3px 8px 3px 0; }
+  .method td { border-bottom: 1px solid var(--grid); padding: 3px 8px 3px 0; font-variant-numeric: tabular-nums; }
   .tablewrap { overflow-x: auto; }
-  footer { margin-top: 26px; color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
-  footer a { color: inherit; }
+  footer {
+    margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--border);
+    color: var(--text-3); font-size: 11.5px; line-height: 1.6;
+  }
+  footer a { color: inherit; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -95,13 +113,12 @@
   <header>
     <div>
       <h1>US AI chip owners, end of 2025</h1>
-      <p class="subtitle">Cumulative AI-chip installed base in <strong>GB300-equivalents</strong> (medians and 90% confidence intervals), per
-        <a href="https://epoch.ai/data/ai-chip-owners">Epoch AI's Data on AI Chip Owners</a>.</p>
+      <p class="subtitle">Cumulative AI-chip installed base in GB300-equivalents — medians and 90%&nbsp;confidence intervals</p>
     </div>
     <div class="toggle" role="tablist" aria-label="Conversion mode">
       <button id="btn-train_fp8" class="active">Training (FP8)</button>
       <button id="btn-train_fp4">Training (FP4)</button>
-      <button id="btn-inference">Inference (mem&nbsp;BW)</button>
+      <button id="btn-inference">Inference</button>
     </div>
   </header>
 
@@ -110,10 +127,9 @@
   <div id="tooltip" aria-hidden="true"></div>
 
   <p class="fine">
-    US owners only — Epoch also tracks a PRC aggregate and a global “Other” bucket, excluded here.
-    Epoch publishes only a point estimate for xAI, so its bar has no interval.
-    Counts are cumulative chips ever installed, with no depreciation or retirement adjustment.
-    Hover or tap a bar for the chip-level breakdown.
+    * Epoch publishes a point estimate only for xAI, so its bar has no interval.
+    US owners only — Epoch’s PRC aggregate and global “Other” bucket are excluded. Counts are cumulative chips ever
+    installed, without retirement adjustment. Hover or tap a bar for the chip-level breakdown.
   </p>
 
   <details>
@@ -122,9 +138,10 @@
   </details>
 
   <footer>
-    Data: <a href="https://epoch.ai/data/ai-chip-owners">Epoch AI, “Data on AI Chip Owners”</a> (CC-BY 4.0), pulled <span id="pulled"></span>; quantities are Epoch’s unit-count estimates by owner and chip type through Q4 2025.
-    Chip specs: <a href="https://epoch.ai/data/machine-learning-hardware">Epoch AI, “Machine Learning Hardware”</a> and vendor datasheets (see methodology).
-    Site built by a team of Konstantin’s Claudes.
+    Chart: a team of Konstantin’s Claudes ·
+    Source: <a href="https://epoch.ai/data/ai-chip-owners">Epoch AI, “Data on AI Chip Owners”</a> (CC-BY 4.0, pulled <span id="pulled"></span>) and
+    <a href="https://epoch.ai/data/machine-learning-hardware">Epoch AI, “Machine Learning Hardware”</a> ·
+    <a href="https://github.com/KonstantinPilz/us-ai-compute/blob/main/data/cumulative_by_chip_type.csv">Get the data</a>
   </footer>
 </div>
 
@@ -134,28 +151,29 @@
 const MODES = {
   train_fp8: {
     label: "Training (FP8)",
-    note: "Chip’s dense FP8 FLOP/s ÷ GB300 FP8 (5 PFLOP/s). Chips without FP8 use FP16/BF16; Google TPUs without FP8 use INT8.",
+    note: "Conversion: chip’s dense FP8 FLOP/s ÷ GB300 FP8 (5 PFLOP/s). Chips without FP8 use FP16/BF16; Google TPUs without FP8 use INT8.",
   },
   train_fp4: {
     label: "Training (FP4)",
-    note: "Chip’s dense FP4 FLOP/s ÷ GB300 FP4 (15 PFLOP/s). Chips without FP4 fall back to FP8, then FP16/BF16 (Google: INT8).",
+    note: "Conversion: chip’s dense FP4 FLOP/s ÷ GB300 FP4 (15 PFLOP/s). Chips without FP4 fall back to FP8, then FP16/BF16 (Google: INT8).",
   },
   inference: {
     label: "Inference (memory bandwidth)",
-    note: "Chip’s memory bandwidth ÷ GB300’s 8 TB/s.",
+    note: "Conversion: chip’s memory bandwidth ÷ GB300’s 8 TB/s.",
   },
 };
 let mode = "train_fp8";
 
 const fmtM = v => {
   const m = v / 1e6;
-  return m >= 10 ? m.toFixed(1) + "M" : m >= 1 ? m.toFixed(2) + "M" : (v / 1e3).toFixed(0) + "k";
+  return m >= 10 ? m.toFixed(1) + "m" : m >= 1 ? m.toFixed(2) + "m" : (v / 1e3).toFixed(0) + "k";
 };
-const fmtUnits = v => v >= 1e6 ? (v / 1e6).toFixed(2) + "M" : Math.round(v / 1e3) + "k";
+const fmtUnits = v => v >= 1e6 ? (v / 1e6).toFixed(2) + "m" : Math.round(v / 1e3) + "k";
+const fmtTick = v => v >= 1e6 ? parseFloat((v / 1e6).toFixed(2)) + "m" : parseFloat((v / 1e3).toFixed(0)) + "k";
 
 const chartEl = document.getElementById("chart");
 const tooltipEl = document.getElementById("tooltip");
-const ROW_H = 46, BAR_H = 20, LEFT = 92, TOP = 8, BOTTOM = 26;
+const ROW_H = 34, BAR_H = 19, LEFT = 82, TOP = 22, BOTTOM = 6;
 
 function niceStep(max) {
   const target = max / 5;
@@ -168,12 +186,11 @@ let built = false, refs = {};
 function render(animate) {
   const owners = [...DATA.owners].sort((a, b) => b.modes[mode].median - a.modes[mode].median);
   const maxVal = Math.max(...owners.map(o => o.has_ci ? o.modes[mode].p95 : o.modes[mode].median));
-  const W = Math.min(chartEl.clientWidth || 940, 940);
-  const narrow = W < 620;
-  const RIGHT = narrow ? 72 : 176;   // reserved for value labels right of the whiskers
+  const W = Math.min(chartEl.clientWidth || 628, 660);
+  const RIGHT = 58;   // room for the bold value label right of the whisker
   const H = TOP + owners.length * ROW_H + BOTTOM;
   const plotW = W - LEFT - RIGHT;
-  const x = v => LEFT + (v / (maxVal * 1.04)) * plotW;
+  const x = v => LEFT + (v / (maxVal * 1.03)) * plotW;
 
   if (!built) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -191,12 +208,11 @@ function render(animate) {
       g.setAttribute("class", "row-g");
       const name = document.createElementNS("http://www.w3.org/2000/svg", "text");
       name.setAttribute("class", "owner-label");
-      name.setAttribute("x", LEFT - 10);
+      name.setAttribute("x", LEFT - 8);
       name.setAttribute("text-anchor", "end");
       name.textContent = o.owner;
       const bar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
       bar.setAttribute("class", "bar-rect");
-      bar.setAttribute("rx", 4);
       bar.setAttribute("x", LEFT);
       bar.setAttribute("height", BAR_H);
       const wh = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -206,8 +222,8 @@ function render(animate) {
       const hit = document.createElementNS("http://www.w3.org/2000/svg", "rect");
       hit.setAttribute("x", 0); hit.setAttribute("height", ROW_H); hit.setAttribute("y", -ROW_H / 2);
       hit.setAttribute("fill", "transparent");
-      hit.addEventListener("mousemove", ev => showTip(o, ev));
-      hit.addEventListener("mouseleave", hideTip);
+      hit.addEventListener("mousemove", ev => { g.classList.add("hover"); showTip(o, ev); });
+      hit.addEventListener("mouseleave", () => { g.classList.remove("hover"); hideTip(); });
       hit.addEventListener("click", ev => showTip(o, ev));
       g.append(name, bar, wh, val, hit);
       svg.appendChild(g);
@@ -219,25 +235,25 @@ function render(animate) {
   refs.svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   refs.svg.setAttribute("height", H);
 
-  // grid + axis
+  // gridlines with labels on top (Datawrapper style)
   refs.gridG.innerHTML = "";
   const step = niceStep(maxVal);
-  for (let v = 0; v <= maxVal * 1.04; v += step) {
+  for (let v = 0; v <= maxVal * 1.03; v += step) {
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("class", "grid-line");
+    line.setAttribute("class", v === 0 ? "zero-line" : "grid-line");
     line.setAttribute("x1", x(v)); line.setAttribute("x2", x(v));
-    line.setAttribute("y1", TOP); line.setAttribute("y2", H - BOTTOM);
+    line.setAttribute("y1", TOP - 4); line.setAttribute("y2", H - BOTTOM);
     refs.gridG.appendChild(line);
     const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
     t.setAttribute("class", "axis-label");
-    t.setAttribute("x", x(v)); t.setAttribute("y", H - BOTTOM + 16);
-    t.setAttribute("text-anchor", "middle");
-    t.textContent = v === 0 ? "0" : fmtM(v);
+    t.setAttribute("x", x(v)); t.setAttribute("y", TOP - 9);
+    t.setAttribute("text-anchor", v === 0 ? "start" : "middle");
+    t.textContent = v === 0 ? "0" : fmtTick(v);
     refs.gridG.appendChild(t);
   }
   const unit = document.createElementNS("http://www.w3.org/2000/svg", "text");
   unit.setAttribute("class", "axis-label");
-  unit.setAttribute("x", W - 8); unit.setAttribute("y", H - BOTTOM + 16);
+  unit.setAttribute("x", W); unit.setAttribute("y", TOP - 9);
   unit.setAttribute("text-anchor", "end");
   unit.textContent = "GB300e";
   refs.gridG.appendChild(unit);
@@ -248,43 +264,44 @@ function render(animate) {
     const yMid = TOP + i * ROW_H + ROW_H / 2;
     if (!animate) r.g.style.transition = "none";
     r.g.setAttribute("transform", `translate(0, ${yMid})`);
-    r.name.setAttribute("y", 4.5);
+    r.name.setAttribute("y", 4);
     r.bar.setAttribute("y", -BAR_H / 2);
     r.bar.setAttribute("width", Math.max(0, x(m.median) - LEFT));
     r.hit.setAttribute("width", W);
     if (o.has_ci) {
-      const x5 = x(m.p5), x95 = x(m.p95), cap = 4;
+      const x5 = x(m.p5), x95 = x(m.p95), cap = 3.5;
       r.wh.setAttribute("d", `M${x5} ${-cap} V${cap} M${x5} 0 H${x95} M${x95} ${-cap} V${cap}`);
-      r.val.textContent = narrow ? fmtM(m.median) : `${fmtM(m.median)}  [${fmtM(m.p5)}–${fmtM(m.p95)}]`;
-      r.val.setAttribute("x", x95 + 8);
+      r.val.textContent = fmtM(m.median);
+      r.val.setAttribute("x", x95 + 7);
     } else {
       r.wh.setAttribute("d", "");
-      r.val.textContent = narrow ? fmtM(m.median) : `${fmtM(m.median)}  (point estimate)`;
-      r.val.setAttribute("x", x(m.median) + 8);
+      r.val.textContent = fmtM(m.median) + "*";
+      r.val.setAttribute("x", x(m.median) + 7);
     }
-    r.val.setAttribute("y", 4.5);
+    r.val.setAttribute("y", 4);
     if (!animate) { r.g.getBoundingClientRect(); r.g.style.transition = ""; }
   });
 
-  document.getElementById("mode-note").textContent = "Conversion: " + MODES[mode].note;
+  document.getElementById("mode-note").textContent = MODES[mode].note;
 }
 
 function showTip(o, ev) {
+  const m = o.modes[mode];
   const chips = Object.entries(o.chips)
     .map(([chip, c]) => ({ chip, units: c.units, v: c[mode] }))
     .sort((a, b) => b.v - a.v);
-  const total = o.modes[mode].median;
-  let html = `<h3>${o.owner} — ${fmtM(total)} GB300e</h3><table>`;
+  let html = `<h3>${o.owner} — ${fmtM(m.median)} GB300e</h3>`;
+  html += `<p class="tt-ci">${o.has_ci ? `90% CI: ${fmtM(m.p5)}–${fmtM(m.p95)}` : "Point estimate — Epoch publishes no CI"}</p><table>`;
   for (const c of chips) {
     html += `<tr><td>${c.chip}</td><td>${fmtUnits(c.units)} chips</td><td>${fmtM(c.v)}</td></tr>`;
   }
-  html += `<tr class="tt-total"><td>Total</td><td></td><td>${fmtM(total)}</td></tr></table>`;
+  html += `<tr class="tt-total"><td>Total</td><td></td><td>${fmtM(m.median)}</td></tr></table>`;
   tooltipEl.innerHTML = html;
   tooltipEl.style.display = "block";
   const tw = tooltipEl.offsetWidth, th = tooltipEl.offsetHeight;
-  let tx = ev.clientX + 14, ty = ev.clientY + 12;
-  if (tx + tw > window.innerWidth - 8) tx = ev.clientX - tw - 14;
-  if (ty + th > window.innerHeight - 8) ty = ev.clientY - th - 12;
+  let tx = ev.clientX + 12, ty = ev.clientY + 10;
+  if (tx + tw > window.innerWidth - 8) tx = ev.clientX - tw - 12;
+  if (ty + th > window.innerHeight - 8) ty = ev.clientY - th - 10;
   tooltipEl.style.left = tx + "px";
   tooltipEl.style.top = ty + "px";
 }
