@@ -57,12 +57,14 @@
   #mode-select {
     flex-shrink: 0; margin-top: 2px; margin-left: auto;
     appearance: none; -webkit-appearance: none;
-    border: 1px solid var(--border); border-radius: 3px; background: var(--control-bg);
-    color: var(--text); font: inherit; font-size: 12px; font-weight: 500;
-    padding: 4px 26px 4px 9px; cursor: pointer;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23999999' stroke-width='1.5'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right 9px center;
+    border: 1px solid var(--border); border-radius: 4px; background: var(--control-bg);
+    color: var(--text); font: inherit; font-size: 13px; font-weight: 700; line-height: 1.2;
+    padding: 6px 30px 6px 12px; cursor: pointer;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23808080' stroke-width='1.6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+    transition: background-color .12s ease, border-color .12s ease;
   }
+  #mode-select:hover { background-color: var(--control-active); border-color: var(--text-3); }
   #mode-select:focus-visible { outline: 2px solid var(--bar); outline-offset: 1px; }
 
   .mode-note { color: var(--text-2); font-size: 12.5px; margin: 8px 0 2px; min-height: 1.3em; line-height: 1.45; }
@@ -71,7 +73,10 @@
 
   .bar-rect { fill: var(--bar); transition: width .45s ease, x .45s ease; }
   .row-g { transition: transform .45s ease; }
-  .row-g.hover .bar-rect { fill: var(--bar-hover); }
+  .seg-rect { fill: var(--bar); pointer-events: none; }
+  .seg-label { font-size: 10.5px; font-weight: 700; pointer-events: none; }
+  .seg-label.on-dark { fill: #ffffff; }
+  .seg-label.on-light { fill: var(--text); }
   .grid-line { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
   .zero-line { stroke: var(--zero); stroke-width: 1; shape-rendering: crispEdges; }
   .axis-label { fill: var(--text-3); font-size: 11px; }
@@ -216,6 +221,7 @@ function render(animate) {
       bar.setAttribute("class", "bar-rect");
       bar.setAttribute("x", LEFT);
       bar.setAttribute("height", BAR_H);
+      const segsG = document.createElementNS("http://www.w3.org/2000/svg", "g");
       const wh = document.createElementNS("http://www.w3.org/2000/svg", "path");
       wh.setAttribute("class", "whisker");
       const val = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -223,18 +229,20 @@ function render(animate) {
       const hit = document.createElementNS("http://www.w3.org/2000/svg", "rect");
       hit.setAttribute("x", 0); hit.setAttribute("height", ROW_H); hit.setAttribute("y", -ROW_H / 2);
       hit.setAttribute("fill", "transparent");
-      hit.addEventListener("mousemove", ev => { g.classList.add("hover"); showTip(o, ev); });
-      hit.addEventListener("mouseleave", () => { g.classList.remove("hover"); hideTip(); });
-      hit.addEventListener("click", ev => showTip(o, ev));
-      g.append(name, bar, wh, val, hit);
+      hit.addEventListener("mousemove", ev => { buildSegs(o); showTip(o, ev); });
+      hit.addEventListener("mouseleave", () => { clearSegs(refs.rows[o.owner]); hideTip(); });
+      hit.addEventListener("click", ev => { buildSegs(o); showTip(o, ev); });
+      g.append(name, bar, segsG, wh, val, hit);
       svg.appendChild(g);
-      refs.rows[o.owner] = { g, name, bar, wh, val, hit };
+      refs.rows[o.owner] = { g, name, bar, segsG, wh, val, hit, segsKey: null };
     }
     built = true;
   }
 
   refs.svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   refs.svg.setAttribute("height", H);
+  refs.x = x;
+  for (const rr of Object.values(refs.rows)) clearSegs(rr);
 
   // gridlines with labels on top (Datawrapper style)
   refs.gridG.innerHTML = "";
@@ -286,6 +294,63 @@ function render(animate) {
   document.getElementById("mode-note").textContent = MODES[mode].note;
 }
 
+// On hover: split the bar into chip-type segments (median shares).
+// Chips under 10% of the owner total are folded into a final "Other" segment.
+const SEG_OPACITY = [1, 0.78, 0.58, 0.42, 0.3];
+function segsOf(o) {
+  const total = o.modes[mode].median;
+  const chips = Object.entries(o.chips)
+    .map(([chip, c]) => ({ chip, v: c[mode] }))
+    .sort((a, b) => b.v - a.v);
+  const segs = chips.filter(c => c.v / total >= 0.10);
+  const rest = chips.filter(c => c.v / total < 0.10);
+  const restSum = rest.reduce((s, c) => s + c.v, 0);
+  if (restSum > 0) segs.push({ chip: rest.length === 1 ? rest[0].chip : "Other", v: restSum });
+  return { segs, total };
+}
+function clearSegs(r) {
+  r.segsG.innerHTML = "";
+  r.segsKey = null;
+  r.bar.style.visibility = "";
+  r.wh.style.visibility = "";
+}
+function buildSegs(o) {
+  const r = refs.rows[o.owner];
+  const key = o.owner + "|" + mode;
+  if (r.segsKey === key) return;
+  clearSegs(r);
+  r.segsKey = key;
+  r.bar.style.visibility = "hidden";
+  r.wh.style.visibility = "hidden";
+  const { segs, total } = segsOf(o);
+  const x = refs.x;
+  let cursor = x(0);
+  segs.forEach((s, i) => {
+    const wFull = x(s.v) - x(0);
+    const w = Math.max(0, i < segs.length - 1 ? wFull - 1 : wFull);   // 1px gap between segments
+    const op = SEG_OPACITY[Math.min(i, SEG_OPACITY.length - 1)];
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("class", "seg-rect");
+    rect.setAttribute("x", cursor); rect.setAttribute("y", -BAR_H / 2);
+    rect.setAttribute("width", w); rect.setAttribute("height", BAR_H);
+    rect.setAttribute("fill-opacity", op);
+    r.segsG.appendChild(rect);
+    const pct = Math.round(s.v / total * 100) + "%";
+    const full = `${s.chip} ${pct}`;
+    const fits = t => t.length * 5.6 + 8 < w;
+    const label = fits(full) ? full : (fits(pct) ? pct : null);
+    if (label) {
+      const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      t.setAttribute("class", "seg-label " + (op >= 0.7 ? "on-dark" : "on-light"));
+      t.setAttribute("x", cursor + w / 2); t.setAttribute("y", 3.5);
+      t.setAttribute("text-anchor", "middle");
+      t.textContent = label;
+      r.segsG.appendChild(t);
+    }
+    cursor += wFull;
+  });
+}
+
 function showTip(o, ev) {
   const m = o.modes[mode];
   const chips = Object.entries(o.chips)
@@ -294,7 +359,7 @@ function showTip(o, ev) {
   let html = `<h3>${o.owner} — ${fmtM(m.median)} GB300e</h3>`;
   html += `<p class="tt-ci">${o.has_ci ? `90% CI: ${fmtM(m.p5)}–${fmtM(m.p95)}` : "Point estimate — Epoch publishes no CI"}</p><table>`;
   for (const c of chips) {
-    html += `<tr><td>${c.chip}</td><td>${fmtUnits(c.units)} chips</td><td>${fmtM(c.v)}</td></tr>`;
+    html += `<tr><td>${c.chip}</td><td>${fmtUnits(c.units)} chips</td><td>${fmtM(c.v)} · ${Math.round(c.v / m.median * 100)}%</td></tr>`;
   }
   html += `<tr class="tt-total"><td>Total</td><td></td><td>${fmtM(m.median)}</td></tr></table>`;
   tooltipEl.innerHTML = html;
