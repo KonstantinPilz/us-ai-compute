@@ -116,9 +116,9 @@
       <p class="subtitle">Cumulative AI-chip installed base in GB300-equivalents — medians and 90%&nbsp;confidence intervals</p>
     </div>
     <div class="toggle" role="tablist" aria-label="Conversion mode">
-      <button id="btn-train_fp8" class="active">Training &amp; Inference Prefill FP8</button>
-      <button id="btn-train_fp4">Training &amp; Inference Prefill FP4</button>
-      <button id="btn-inference">Inference Decode</button>
+      <button id="btn-train_fp8" class="active">FP8 FLOP/s</button>
+      <button id="btn-train_fp4">FP4 FLOP/s</button>
+      <button id="btn-inference">Memory Bandwidth</button>
     </div>
   </header>
 
@@ -150,15 +150,15 @@
 "use strict";
 const MODES = {
   train_fp8: {
-    label: "Training & Inference Prefill FP8",
+    label: "FP8 FLOP/s",
     note: "Conversion: chip’s dense FP8 FLOP/s ÷ GB300 FP8 (5 PFLOP/s). Chips without FP8 use FP16/BF16; Google TPUs without FP8 use INT8.",
   },
   train_fp4: {
-    label: "Training & Inference Prefill FP4",
+    label: "FP4 FLOP/s",
     note: "Conversion: chip’s dense FP4 FLOP/s ÷ GB300 FP4 (15 PFLOP/s). Chips without FP4 fall back to FP8, then FP16/BF16 (Google: INT8).",
   },
   inference: {
-    label: "Inference Decode",
+    label: "Memory Bandwidth",
     note: "Conversion: chip’s memory bandwidth ÷ GB300’s 8 TB/s — decode throughput is memory-bandwidth-bound.",
   },
 };
@@ -349,9 +349,9 @@ function buildMethod() {
     <h4>Conversion to GB300e</h4>
     <p>For each chip type, GB300e = units × (chip spec ÷ GB300 spec), summed over an owner’s chips. The three toggle modes use:</p>
     <ul>
-      <li><strong>Training &amp; Inference Prefill FP8</strong>: dense FP8 FLOP/s ÷ GB300’s ${g.fp8_pflops} PFLOP/s. If a chip has no FP8 support, its dense FP16/BF16 rate is used instead; for Google TPUs without FP8 the INT8 rate is used (matching how these chips run low-precision workloads). Training and inference prefill are both compute-bound, so FLOP/s is the relevant spec.</li>
-      <li><strong>Training &amp; Inference Prefill FP4</strong>: dense FP4 FLOP/s ÷ GB300’s ${g.fp4_pflops} PFLOP/s, falling back to FP8 (then FP16/BF16, Google: INT8) where FP4 is unsupported.</li>
-      <li><strong>Inference Decode</strong>: memory bandwidth ÷ GB300’s ${g.bw_tbs} TB/s, since decode throughput is memory-bandwidth-bound.</li>
+      <li><strong>FP8 FLOP/s</strong>: dense FP8 FLOP/s ÷ GB300’s ${g.fp8_pflops} PFLOP/s. If a chip has no FP8 support, its dense FP16/BF16 rate is used instead; for Google TPUs without FP8 the INT8 rate is used (matching how these chips run low-precision workloads). Training and inference prefill are both compute-bound, so FLOP/s is the relevant spec.</li>
+      <li><strong>FP4 FLOP/s</strong>: dense FP4 FLOP/s ÷ GB300’s ${g.fp4_pflops} PFLOP/s, falling back to FP8 (then FP16/BF16, Google: INT8) where FP4 is unsupported.</li>
+      <li><strong>Memory Bandwidth</strong>: memory bandwidth ÷ GB300’s ${g.bw_tbs} TB/s, since decode throughput is memory-bandwidth-bound.</li>
     </ul>
     <p>All FLOP/s figures are dense (no structured sparsity). Chip specs are from
     <a href="https://epoch.ai/data/machine-learning-hardware">Epoch AI’s Machine Learning Hardware database</a>, with two overrides from vendor datasheets:
@@ -382,7 +382,7 @@ function buildMethod() {
 
     <h4>Data table (GB300e, median [90% CI])</h4>
     <div class="tablewrap"><table>
-      <tr><th>Owner</th><th>Training &amp; Inf. Prefill FP8</th><th>Training &amp; Inf. Prefill FP4</th><th>Inference Decode</th></tr>
+      <tr><th>Owner</th><th>FP8 FLOP/s</th><th>FP4 FLOP/s</th><th>Memory Bandwidth</th></tr>
       ${dataRows}
     </table></div>`;
 }
