@@ -605,9 +605,9 @@ function renderLabs() {
   document.getElementById("labs-fine").innerHTML =
     `Hover or tap a bar for ownership, chip-class breakdown, and sources. FP4 and Memory Bandwidth modes rescale the
      sheet's FP8-basis medians and CIs by a fixed per-lab factor from the median chip mix, so they carry the same
-     relative uncertainty. Chip-class figures are median raw chip
-     counts; for the spend-based models (MiniMax, Zhipu, Moonshot) they are H800-denominated capacity equivalents,
-     not physical chip censuses. Whiskers are 80% CIs (p10–p90), unlike the 90% CIs above.
+     relative uncertainty. Tooltip chip rows are median counts from the model's own per-chip inputs, with each
+     chip's share of the current mode's total; spend-based capacity (MiniMax, Moonshot, Zhipu rented) is
+     H800-denominated, not a physical chip census. Whiskers are 80% CIs (p10–p90), unlike the 90% CIs above.
      Sheet last updated ${labsPayload.updated_sheet} · synced ${labsPayload.synced} ·
      Source: <a href="${labsPayload.sheet_url}">Chinese AI Developer Compute — Monte Carlo (internal Google Sheet)</a>.`;
 }
@@ -616,8 +616,17 @@ function showLabsTip(l, ev) {
   const m = labsVal(l);
   let html = `<h3>${l.name} — ${labsFmt(m.median)} GB300e</h3>`;
   html += `<p class="tt-ci">80% CI: ${labsFmt(m.p10)}–${labsFmt(m.p90)} · ${l.ownership}</p><table>`;
-  for (const fam of Object.keys(l.families)) {
-    if (l.families[fam] > 0) html += `<tr><td>${fam}</td><td>${labsFmt(l.families[fam])} chips</td></tr>`;
+  if (l.chips) {
+    const mult = c => labsMode === "fp4" ? c.m4 : labsMode === "bw" ? c.mbw : 1;
+    const tot = l.chips.reduce((s, c) => s + c.w * mult(c), 0);
+    for (const c of [...l.chips].sort((a, b) => b.w * mult(b) - a.w * mult(a))) {
+      const share = Math.round(c.w * mult(c) / tot * 100);
+      html += `<tr><td>${c.label}</td><td>${labsFmt(c.chips)} chips · ${share}%</td></tr>`;
+    }
+  } else {
+    for (const fam of Object.keys(l.families)) {
+      if (l.families[fam] > 0) html += `<tr><td>${fam}</td><td>${labsFmt(l.families[fam])} chips</td></tr>`;
+    }
   }
   html += `</table>`;
   if (labsMode !== "fp8" && l.factors) {
