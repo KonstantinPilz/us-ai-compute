@@ -37,6 +37,9 @@ The index page ends with a password-protected "Chinese AI developers" section. I
 client-side after the password is entered; `docs/labs.html` just redirects to `/#labs`. A local
 hourly script (`sync_labs.py`, deliberately not in this repo) syncs the blob from an internal
 model, validating the source structure strictly and failing loudly — without publishing — if the
-source layout changes (new rows, renamed headers, moved tables).
+source layout changes (new rows, renamed headers, moved tables). The section has the same
+FP8/FP4/Memory-Bandwidth dropdown as the main figure: FP8 shows the source values verbatim;
+FP4 and Memory Bandwidth rescale medians and CIs by per-entity factors computed from each
+entity's chip mix (read and validated from the source each sync).
 
 Built by a team of Konstantin's Claudes, 2026-07-20.
