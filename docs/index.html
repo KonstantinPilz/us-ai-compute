@@ -112,6 +112,18 @@
     color: var(--text-3); font-size: 11.5px; line-height: 1.6;
   }
   footer a { color: inherit; text-decoration: underline; }
+
+  #labs { margin-top: 34px; border-top: 1px solid var(--border); padding-top: 20px; }
+  #labs h2 { font-size: 18px; margin: 0 0 4px; font-weight: 700; line-height: 1.25; }
+  #labs-lock { margin: 14px 0 4px; padding: 16px; border: 1px dashed var(--border); border-radius: 4px; }
+  #labs-lock p { margin: 0 0 10px; font-size: 12.5px; color: var(--text-2); }
+  #labs-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  #labs-pw { padding: 5px 9px; font: inherit; font-size: 13px; border: 1px solid var(--border);
+    border-radius: 4px; background: transparent; color: var(--text); width: 180px; }
+  #labs-form button { padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 700;
+    border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--text); cursor: pointer; }
+  #labs-form button:hover { background: var(--control-active); }
+  #labs-err { color: #c0392b; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -143,6 +155,25 @@
     <div class="method" id="method"></div>
   </details>
 
+  <section id="labs">
+    <h2>Chinese AI developers, end of 2025</h2>
+    <p class="subtitle">Estimated accessible compute in GB300-equivalents — medians and 80%&nbsp;confidence intervals</p>
+    <div id="labs-lock">
+      <p>This section is password-protected.</p>
+      <form id="labs-form">
+        <input id="labs-pw" type="password" autocomplete="current-password" aria-label="Password" placeholder="Password">
+        <button type="submit">Unlock</button>
+        <span id="labs-err"></span>
+      </form>
+    </div>
+    <div id="labs-body" style="display:none">
+      <p class="mode-note">Frozen in-sheet Monte Carlos per developer; physical chips (or H800-denominated access for
+      spend-based models) converted to GB300e at shared per-chip ratios. 1&nbsp;GB300e&nbsp;=&nbsp;2.5265&nbsp;H100e.</p>
+      <div id="labs-chart"></div>
+      <p class="fine" id="labs-fine"></p>
+    </div>
+  </section>
+
   <footer>
     Chart: a team of Konstantin’s Claudes ·
     Source: <a href="https://epoch.ai/data/ai-chip-owners">Epoch AI, “Data on AI Chip Owners”</a> (CC-BY 4.0, pulled <span id="pulled"></span>) and
@@ -152,6 +183,7 @@
 </div>
 
 <script src="data.js"></script>
+<script src="labs_data.js"></script>
 <script>
 "use strict";
 const MODES = {
@@ -459,6 +491,140 @@ function buildMethod() {
 document.getElementById("pulled").textContent = DATA.meta.pulled;
 buildMethod();
 render(false);
+
+// ---- Chinese labs section (encrypted; decrypts client-side with password) ----
+let labsPayload = null;
+const labsB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+async function labsDecrypt(pw) {
+  const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: labsB64(LABS_CT.salt), iterations: 300000, hash: "SHA-256" },
+    km, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: labsB64(LABS_CT.iv) }, key, labsB64(LABS_CT.ct));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+const labsFmt = v => Math.round(v).toLocaleString("en-US");
+
+function renderLabs() {
+  if (!labsPayload) return;
+  const el = document.getElementById("labs-chart");
+  const labs = [...labsPayload.labs].sort((a, b) => b.median - a.median);
+  const maxVal = Math.max(...labs.map(l => l.p90));
+  const W = Math.min(el.clientWidth || 628, 660);
+  const L_LEFT = 76, L_RIGHT = 56;
+  const H = TOP + labs.length * ROW_H + BOTTOM;
+  const plotW = W - L_LEFT - L_RIGHT;
+  const x = v => L_LEFT + (v / (maxVal * 1.03)) * plotW;
+  el.innerHTML = "";
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("height", H);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "Bar chart of Chinese AI developers in GB300 equivalents");
+  el.appendChild(svg);
+  const step = niceStep(maxVal);
+  for (let v = 0; v <= maxVal * 1.03; v += step) {
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("class", v === 0 ? "zero-line" : "grid-line");
+    line.setAttribute("x1", x(v)); line.setAttribute("x2", x(v));
+    line.setAttribute("y1", TOP - 4); line.setAttribute("y2", H - BOTTOM);
+    svg.appendChild(line);
+    const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t.setAttribute("class", "axis-label");
+    t.setAttribute("x", x(v)); t.setAttribute("y", TOP - 9);
+    t.setAttribute("text-anchor", v === 0 ? "start" : "middle");
+    t.textContent = v === 0 ? "0" : (v / 1000) + "k";
+    svg.appendChild(t);
+  }
+  const unit = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  unit.setAttribute("class", "axis-label");
+  unit.setAttribute("x", W); unit.setAttribute("y", TOP - 9);
+  unit.setAttribute("text-anchor", "end");
+  unit.textContent = "GB300e";
+  svg.appendChild(unit);
+  labs.forEach((l, i) => {
+    const yMid = TOP + i * ROW_H + ROW_H / 2;
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("transform", `translate(0, ${yMid})`);
+    const name = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    name.setAttribute("class", "owner-label");
+    name.setAttribute("x", L_LEFT - 8); name.setAttribute("y", 4);
+    name.setAttribute("text-anchor", "end");
+    name.textContent = l.name;
+    const bar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bar.setAttribute("class", "bar-rect");
+    bar.setAttribute("x", L_LEFT); bar.setAttribute("y", -BAR_H / 2);
+    bar.setAttribute("width", Math.max(0, x(l.median) - L_LEFT));
+    bar.setAttribute("height", BAR_H);
+    const wh = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    wh.setAttribute("class", "whisker");
+    const x10 = x(l.p10), x90 = x(l.p90), cap = 3.5;
+    wh.setAttribute("d", `M${x10} ${-cap} V${cap} M${x10} 0 H${x90} M${x90} ${-cap} V${cap}`);
+    const val = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    val.setAttribute("class", "value-label");
+    val.setAttribute("x", x90 + 7); val.setAttribute("y", 4);
+    val.textContent = labsFmt(l.median);
+    const hit = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    hit.setAttribute("x", 0); hit.setAttribute("y", -ROW_H / 2);
+    hit.setAttribute("width", W); hit.setAttribute("height", ROW_H);
+    hit.setAttribute("fill", "transparent");
+    hit.addEventListener("mousemove", ev => showLabsTip(l, ev));
+    hit.addEventListener("mouseleave", hideTip);
+    hit.addEventListener("click", ev => showLabsTip(l, ev));
+    g.append(name, bar, wh, val, hit);
+    svg.appendChild(g);
+  });
+  document.getElementById("labs-fine").innerHTML =
+    `Hover or tap a bar for ownership, chip-class breakdown, and sources. Chip-class figures are median raw chip
+     counts; for the spend-based models (MiniMax, Zhipu, Moonshot) they are H800-denominated capacity equivalents,
+     not physical chip censuses. Whiskers are 80% CIs (p10–p90), unlike the 90% CIs above.
+     Sheet last updated ${labsPayload.updated_sheet} · synced ${labsPayload.synced} ·
+     Source: <a href="${labsPayload.sheet_url}">Chinese AI Developer Compute — Monte Carlo (internal Google Sheet)</a>.`;
+}
+
+function showLabsTip(l, ev) {
+  let html = `<h3>${l.name} — ${labsFmt(l.median)} GB300e</h3>`;
+  html += `<p class="tt-ci">80% CI: ${labsFmt(l.p10)}–${labsFmt(l.p90)} · ${l.ownership}</p><table>`;
+  for (const fam of Object.keys(l.families)) {
+    if (l.families[fam] > 0) html += `<tr><td>${fam}</td><td>${labsFmt(l.families[fam])} chips</td></tr>`;
+  }
+  html += `</table><p class="tt-src">Main sources: ${l.sources}</p>`;
+  tooltipEl.innerHTML = html;
+  tooltipEl.style.display = "block";
+  const tw = tooltipEl.offsetWidth, th = tooltipEl.offsetHeight;
+  let tx = ev.clientX + 12, ty = ev.clientY + 10;
+  if (tx + tw > window.innerWidth - 8) tx = ev.clientX - tw - 12;
+  if (ty + th > window.innerHeight - 8) ty = ev.clientY - th - 10;
+  tooltipEl.style.left = tx + "px";
+  tooltipEl.style.top = ty + "px";
+}
+
+async function labsUnlock(pw, remember) {
+  if (typeof LABS_CT === "undefined") {
+    document.getElementById("labs-err").textContent = "Data unavailable (sync issue).";
+    return;
+  }
+  try {
+    labsPayload = await labsDecrypt(pw);
+    if (remember) localStorage.setItem("labs_pw", pw);
+    document.getElementById("labs-lock").style.display = "none";
+    document.getElementById("labs-body").style.display = "";
+    renderLabs();
+  } catch (e) {
+    localStorage.removeItem("labs_pw");
+    document.getElementById("labs-err").textContent = "Wrong password.";
+  }
+}
+document.getElementById("labs-form").addEventListener("submit", ev => {
+  ev.preventDefault();
+  labsUnlock(document.getElementById("labs-pw").value, true);
+});
+const labsSaved = localStorage.getItem("labs_pw");
+if (labsSaved) labsUnlock(labsSaved, false);
+window.addEventListener("resize", renderLabs);
 </script>
 </body>
 </html>
