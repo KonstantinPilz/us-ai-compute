@@ -30,12 +30,13 @@ Chip specs are hardcoded in `build_data.py` (`SPECS`), sourced from Epoch's ML H
 (`~/research/ml-hardware/ml_hardware.csv`) plus AMD datasheet overrides for MI300X/MI325X/MI355X FP8/FP4.
 If Epoch adds new chip types, the script fails with an assert listing the missing specs.
 
-## Companion page (docs/labs.html)
+## Locked companion section (#labs)
 
-`docs/labs.html` is a password-protected companion figure synced hourly from an internal model
-by a local script (`sync_labs.py`, deliberately not in this repo). The published file contains
-only AES-256-GCM ciphertext (PBKDF2-SHA256, 300k iterations); decryption happens client-side.
-The sync validates the source structure strictly and fails loudly — without publishing — if the
+The index page ends with a password-protected "Chinese AI developers" section. Its data ships as
+`docs/labs_data.js` — AES-256-GCM ciphertext only (PBKDF2-SHA256, 300k iterations), decrypted
+client-side after the password is entered; `docs/labs.html` just redirects to `/#labs`. A local
+hourly script (`sync_labs.py`, deliberately not in this repo) syncs the blob from an internal
+model, validating the source structure strictly and failing loudly — without publishing — if the
 source layout changes (new rows, renamed headers, moved tables).
 
 Built by a team of Konstantin's Claudes, 2026-07-20.
