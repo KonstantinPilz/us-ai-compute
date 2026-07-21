@@ -191,7 +191,6 @@
 </div>
 
 <script src="data.js"></script>
-<script src="labs_data.js"></script>
 <script>
 "use strict";
 const MODES = {
@@ -504,12 +503,21 @@ render(false);
 let labsPayload = null;
 const labsB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 
-async function labsDecrypt(pw) {
+async function labsFetchCT() {
+  // cache: "no-cache" forces ETag revalidation, so the blob is always current
+  // even though it ships as a static file.
+  const resp = await fetch("labs_data.js", { cache: "no-cache" });
+  if (!resp.ok) throw new Error("fetch failed");
+  const t = await resp.text();
+  return JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}") + 1));
+}
+
+async function labsDecrypt(pw, ct) {
   const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
   const key = await crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: labsB64(LABS_CT.salt), iterations: 300000, hash: "SHA-256" },
+    { name: "PBKDF2", salt: labsB64(ct.salt), iterations: 300000, hash: "SHA-256" },
     km, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: labsB64(LABS_CT.iv) }, key, labsB64(LABS_CT.ct));
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: labsB64(ct.iv) }, key, labsB64(ct.ct));
   return JSON.parse(new TextDecoder().decode(plain));
 }
 
@@ -627,12 +635,15 @@ function showLabsTip(l, ev) {
 }
 
 async function labsUnlock(pw, remember) {
-  if (typeof LABS_CT === "undefined") {
+  let ct;
+  try {
+    ct = await labsFetchCT();
+  } catch (e) {
     document.getElementById("labs-err").textContent = "Data unavailable (sync issue).";
     return;
   }
   try {
-    labsPayload = await labsDecrypt(pw);
+    labsPayload = await labsDecrypt(pw, ct);
     if (remember) localStorage.setItem("labs_pw", pw);
     document.getElementById("labs-lock").style.display = "none";
     document.getElementById("labs-body").style.display = "";
