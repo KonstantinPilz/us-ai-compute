@@ -15,6 +15,7 @@
     --text-2: #666666;
     --text-3: #999999;
     --bar: #1d81a2;
+    --bar-cn: #b0492f;
     --bar-hover: #15607a;
     --grid: #e8e8e8;
     --zero: #b0b0b0;
@@ -31,6 +32,7 @@
       --text-2: #a8a8a8;
       --text-3: #7d7d7d;
       --bar: #2e94bd;
+      --bar-cn: #d06a4e;
       --bar-hover: #4fb0d6;
       --grid: #383838;
       --zero: #5a5a5a;
@@ -72,6 +74,10 @@
   svg text { font-family: inherit; }
 
   .bar-rect { fill: var(--bar); transition: width .45s ease, x .45s ease; }
+  .bar-cn .bar-rect, .bar-cn .seg-rect { fill: var(--bar-cn); }
+  #cn-legend { display: none; color: var(--text-2); font-size: 12px; margin: 6px 0 0; line-height: 1.5; }
+  #cn-legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 10px; vertical-align: -1px; }
+  #cn-legend .sw:first-child { margin-left: 0; }
   .row-g { transition: transform .45s ease; }
   .seg-rect { fill: var(--bar); pointer-events: none; }
   .seg-label { font-size: 10.5px; font-weight: 700; pointer-events: none; }
@@ -141,6 +147,8 @@
   </header>
 
   <p class="mode-note" id="mode-note"></p>
+  <p id="cn-legend"><span class="sw" style="background:var(--bar)"></span>US owners (Epoch AI, 90% CIs)
+  <span class="sw" style="background:var(--bar-cn)"></span>Chinese companies (internal model, 80% CIs)</p>
   <div id="chart"></div>
   <div id="tooltip" aria-hidden="true"></div>
 
@@ -228,15 +236,8 @@ function niceStep(max) {
 }
 
 let built = false, refs = {};
+let extraOwners = [];
 function render(animate) {
-  const owners = [...DATA.owners].sort((a, b) => b.modes[mode].median - a.modes[mode].median);
-  const maxVal = Math.max(...owners.map(o => o.has_ci ? o.modes[mode].p95 : o.modes[mode].median));
-  const W = Math.min(chartEl.clientWidth || 628, 660);
-  const RIGHT = 58;   // room for the bold value label right of the whisker
-  const H = TOP + owners.length * ROW_H + BOTTOM;
-  const plotW = W - LEFT - RIGHT;
-  const x = v => LEFT + (v / (maxVal * 1.03)) * plotW;
-
   if (!built) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("width", "100%");
@@ -248,9 +249,17 @@ function render(animate) {
     refs.gridG = document.createElementNS("http://www.w3.org/2000/svg", "g");
     svg.appendChild(refs.gridG);
     refs.rows = {};
-    for (const o of DATA.owners) {
+    for (const o of DATA.owners) makeRow(o);
+    built = true;
+  }
+  for (const o of extraOwners) if (!refs.rows[o.owner]) makeRow(o);
+  const allOwners = [...DATA.owners, ...extraOwners];
+  renderRows(allOwners, animate);
+}
+
+function makeRow(o) {
       const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      g.setAttribute("class", "row-g");
+      g.setAttribute("class", "row-g" + (o.cn ? " bar-cn" : ""));
       const name = document.createElementNS("http://www.w3.org/2000/svg", "text");
       name.setAttribute("class", "owner-label");
       name.setAttribute("x", LEFT - 8);
@@ -272,11 +281,18 @@ function render(animate) {
       hit.addEventListener("mouseleave", () => { clearSegs(refs.rows[o.owner]); hideTip(); });
       hit.addEventListener("click", ev => { buildSegs(o); showTip(o, ev); });
       g.append(name, bar, segsG, wh, val, hit);
-      svg.appendChild(g);
+      refs.svg.appendChild(g);
       refs.rows[o.owner] = { g, name, bar, segsG, wh, val, hit, segsKey: null };
-    }
-    built = true;
-  }
+}
+
+function renderRows(owners, animate) {
+  owners.sort((a, b) => b.modes[mode].median - a.modes[mode].median);
+  const maxVal = Math.max(...owners.map(o => o.has_ci ? o.modes[mode].p95 : o.modes[mode].median));
+  const W = Math.min(chartEl.clientWidth || 628, 660);
+  const RIGHT = 58;
+  const H = TOP + owners.length * ROW_H + BOTTOM;
+  const plotW = W - LEFT - RIGHT;
+  const x = v => LEFT + (v / (maxVal * 1.03)) * plotW;
 
   refs.svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   refs.svg.setAttribute("height", H);
@@ -343,6 +359,13 @@ const SHORT_CHIP = {
   "Instinct MI300X": "MI300X", "Instinct MI325X": "MI325X",
   "Instinct MI350X": "MI350X", "Instinct MI355X": "MI355X",
   "Other": "Oth",
+  "H100/H200 (rented offshore)": "H100/H200", "H100/H200/B200 (rented offshore)": "H100–B200",
+  "H100-class (Azure, rented)": "Azure", "H100-class (other providers, rented)": "H100",
+  "B200/GB200 (rented offshore)": "B200", "B200/H100 (Datasection rental)": "B200/H100",
+  "H100 (smuggled)": "H100", "B200 (smuggled)": "B200", "T-Head PPU": "PPU",
+  "Ascend 910B": "910B", "Ascend 910C": "910C", "Ascend 910A": "910A",
+  "Kunlun P800": "P800", "Kunlun II": "KII", "Cambricon MLU": "MLU",
+  "Pre-2022 legacy": "Legacy", "Enflame": "Enflame",
 };
 function segsOf(o) {
   const total = o.modes[mode].median;
@@ -403,11 +426,24 @@ function showTip(o, ev) {
     .map(([chip, c]) => ({ chip, units: c.units, v: c[mode] }))
     .sort((a, b) => b.v - a.v);
   let html = `<h3>${o.owner} — ${fmtM(m.median)} GB300e</h3>`;
-  html += `<p class="tt-ci">${o.has_ci ? `90% CI: ${fmtM(m.p5)}–${fmtM(m.p95)}` : "Point estimate — Epoch publishes no CI"}</p><table>`;
+  if (o.cn) {
+    html += `<p class="tt-ci">80% CI: ${fmtM(m.p5)}–${fmtM(m.p95)} · owned ${fmtM(o.owned)} / rented ${fmtM(o.rented)}` +
+            ` · onshore ${fmtM(o.onshore)} / offshore ${fmtM(o.offshore)} (FP8-basis medians)</p>`;
+  } else {
+    html += `<p class="tt-ci">${o.has_ci ? `90% CI: ${fmtM(m.p5)}–${fmtM(m.p95)}` : "Point estimate — Epoch publishes no CI"}</p>`;
+  }
+  html += `<table>`;
   for (const c of chips) {
-    html += `<tr><td>${c.chip}</td><td>${fmtUnits(c.units)} chips</td><td>${fmtM(c.v)} · ${Math.round(c.v / m.median * 100)}%</td></tr>`;
+    const val = (o.cn && mode === "inference" && c.v === 0)
+      ? "no BW spec" : `${fmtM(c.v)} · ${Math.round(c.v / m.median * 100)}%`;
+    html += `<tr><td>${c.chip}</td><td>${fmtUnits(c.units)} chips</td><td>${val}</td></tr>`;
   }
   html += `<tr class="tt-total"><td>Total</td><td></td><td>${fmtM(m.median)}</td></tr></table>`;
+  if (o.cn && mode !== "train_fp8") {
+    html += `<p class="tt-src">= FP8-basis × ${o.factors[mode === "inference" ? "bw" : "fp4"].toFixed(2)} (median chip mix)` +
+      (mode === "inference" && o.bw_coverage < 0.995
+        ? `; covers ${Math.round(o.bw_coverage * 100)}% of GB300e — no sourced bandwidth spec for the rest` : "") + `</p>`;
+  }
   tooltipEl.innerHTML = html;
   tooltipEl.style.display = "block";
   const tw = tooltipEl.offsetWidth, th = tooltipEl.offsetHeight;
@@ -643,6 +679,31 @@ function showLabsTip(l, ev) {
   tooltipEl.style.top = ty + "px";
 }
 
+function applyCompanies(companies) {
+  if (!companies || extraOwners.length) return;
+  for (const c of companies) {
+    const modes = {};
+    for (const [src_m, dst] of [["fp8", "train_fp8"], ["fp4", "train_fp4"], ["bw", "inference"]]) {
+      modes[dst] = { median: c.modes[src_m].median, p5: c.modes[src_m].p10, p95: c.modes[src_m].p90 };
+    }
+    const chips = {};
+    // Scale weights so chip values sum exactly to the MC median (weights are
+    // sums of per-chip medians, which don't add to the MC total median).
+    const wSum = c.chips.reduce((s, ch) => s + ch.w, 0);
+    const scale = c.median / wSum;
+    for (const ch of c.chips) {
+      chips[ch.label] = { units: ch.chips, train_fp8: ch.w * scale, train_fp4: ch.w * scale * ch.m4,
+                          inference: ch.mbw ? ch.w * scale * ch.mbw : 0 };
+    }
+    extraOwners.push({ owner: c.name, cn: true, has_ci: true, modes, chips,
+                       owned: c.owned, rented: c.rented, onshore: c.onshore, offshore: c.offshore,
+                       factors: c.factors, bw_coverage: c.bw_coverage });
+  }
+  document.getElementById("cn-legend").style.display = "block";
+  document.querySelector("h1").textContent = "US and Chinese AI compute owners, end of 2025";
+  render(false);
+}
+
 async function labsUnlock(pw, remember) {
   let ct;
   try {
@@ -657,6 +718,7 @@ async function labsUnlock(pw, remember) {
     document.getElementById("labs-lock").style.display = "none";
     document.getElementById("labs-body").style.display = "";
     document.getElementById("labs-mode-select").style.display = "";
+    applyCompanies(labsPayload.companies);
     renderLabs();
   } catch (e) {
     localStorage.removeItem("labs_pw");
