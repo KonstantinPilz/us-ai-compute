@@ -1,5 +1,17 @@
 # US AI chip owners in GB300-equivalents (EOY 2025)
 
+Page structure (KP's three-section vision, 2026-07-24): 1. AI chip production
+(TrendForce, locked), 2. AI chip owners (Epoch public + Chinese companies on
+unlock), 3. AI developer compute access (Chinese labs, locked; future Epoch pub).
+The TF section shows annual US-vs-China shipments as grouped stacked-by-vendor
+bars on a log scale with the same three conversion modes; data from the internal
+TF H100e conversion sheet (licensed internal-only — aggregate stats with
+"Source: TrendForce" may be published, vendor/chip-level detail may not). Chips
+without announced bandwidth specs (TPU v8/v9, Trainium 3/4, MI500, Maia 200/300,
+MTIA 300+, Rubin Ultra, Cambricon MLU) are excluded from the BW mode with
+per-bar coverage disclosed in tooltips. Labs/DeepSeek/Zhipu validators are
+label-scan (layout-shift tolerant, loud on renames) since the 07-23 sheet re-run.
+
 Interactive figure: cumulative AI-chip installed base of the seven US owners Epoch AI names
 (Microsoft, Google, Meta, Amazon, Oracle, CoreWeave, xAI) at end of 2025, converted to
 GB300-equivalents, with 90% CIs and a three-mode toggle:
