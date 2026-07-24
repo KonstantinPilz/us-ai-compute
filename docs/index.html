@@ -158,7 +158,7 @@
   <header>
     <div>
       <h1>US AI chip owners, end of 2025</h1>
-      <p class="subtitle">Cumulative AI-chip installed base in GB300-equivalents — medians and 90%&nbsp;confidence intervals</p>
+      <p class="subtitle">Cumulative AI-chip installed base in GB300-equivalents — medians and 80%&nbsp;confidence intervals</p>
     </div>
     <select id="mode-select" aria-label="Conversion mode">
       <option value="train_fp8" selected>FP8 FLOP/s</option>
@@ -168,7 +168,7 @@
   </header>
 
   <p class="mode-note" id="mode-note"></p>
-  <p id="cn-legend"><span class="sw" style="background:var(--bar)"></span>US owners (Epoch AI, 90% CIs)
+  <p id="cn-legend"><span class="sw" style="background:var(--bar)"></span>US owners (Epoch AI, 80% CIs)
   <span class="sw" style="background:var(--bar-cn)"></span>Chinese companies (internal model, 80% CIs, owned compute only)</p>
   <div id="chart"></div>
   <div id="tooltip" aria-hidden="true"></div>
@@ -220,7 +220,7 @@
   </footer>
 </div>
 
-<script src="data.js"></script>
+<script src="data.js?v=80ci"></script>
 <script>
 "use strict";
 const MODES = {
@@ -309,7 +309,7 @@ function makeRow(o) {
 
 function renderRows(owners, animate) {
   owners.sort((a, b) => b.modes[mode].median - a.modes[mode].median);
-  const maxVal = Math.max(...owners.map(o => o.has_ci ? o.modes[mode].p95 : o.modes[mode].median));
+  const maxVal = Math.max(...owners.map(o => o.has_ci ? o.modes[mode].hi : o.modes[mode].median));
   const W = Math.min(chartEl.clientWidth || 628, 660);
   const RIGHT = 58;
   const H = TOP + owners.length * ROW_H + BOTTOM;
@@ -355,7 +355,7 @@ function renderRows(owners, animate) {
     r.bar.setAttribute("width", Math.max(0, x(m.median) - LEFT));
     r.hit.setAttribute("width", W);
     if (o.has_ci) {
-      const x5 = x(m.p5), x95 = x(m.p95), cap = 3.5;
+      const x5 = x(m.lo), x95 = x(m.hi), cap = 3.5;
       r.wh.setAttribute("d", `M${x5} ${-cap} V${cap} M${x5} 0 H${x95} M${x95} ${-cap} V${cap}`);
       r.val.textContent = fmtM(m.median);
       r.val.setAttribute("x", x95 + 7);
@@ -449,10 +449,10 @@ function showTip(o, ev) {
     .sort((a, b) => b.v - a.v);
   let html = `<h3>${o.owner} — ${fmtM(m.median)} GB300e</h3>`;
   if (o.cn) {
-    html += `<p class="tt-ci">80% CI: ${fmtM(m.p5)}–${fmtM(m.p95)} · owned compute only` +
+    html += `<p class="tt-ci">80% CI: ${fmtM(m.lo)}–${fmtM(m.hi)} · owned compute only` +
             (o.rented > 0 ? ` — rented access adds ~${fmtM(o.rented)} (total ~${fmtM(o.total_median)}, FP8-basis medians)` : ` — no rented access modeled`) + `</p>`;
   } else {
-    html += `<p class="tt-ci">${o.has_ci ? `90% CI: ${fmtM(m.p5)}–${fmtM(m.p95)}` : "Point estimate — Epoch publishes no CI"}</p>`;
+    html += `<p class="tt-ci">${o.has_ci ? `80% CI: ${fmtM(m.lo)}–${fmtM(m.hi)}` : "Point estimate — Epoch publishes no CI"}</p>`;
   }
   html += `<table>`;
   for (const c of chips) {
@@ -491,7 +491,7 @@ function buildMethod() {
   document.getElementById("method").innerHTML = `
     <h4>What is shown</h4>
     <p>Each bar is one owner’s cumulative installed base of AI chips at the end of 2025, converted to GB300 equivalents (GB300e).
-    Unit counts by owner and chip type — medians and 5th–95th percentile intervals — come from
+    Unit counts by owner and chip type — medians and percentile intervals — come from
     <a href="https://epoch.ai/data/ai-chip-owners">Epoch AI’s Data on AI Chip Owners</a> (rows ending 2025-12-31; data pulled ${DATA.meta.pulled}).
     Owners shown are the seven US companies Epoch names: Microsoft, Google, Meta, Amazon, Oracle, CoreWeave, and xAI.
     Epoch’s PRC aggregate and its global “Other” bucket are excluded.</p>
@@ -512,8 +512,8 @@ function buildMethod() {
     <p id="method-sheet-note">The full per-chip conversion table and the per-owner data table live in a companion spreadsheet (internal).</p>
 
     <h4>Confidence intervals</h4>
-    <p>90% intervals (5th–95th percentile) via Monte Carlo (${DATA.meta.n_mc.toLocaleString()} draws): each owner × chip unit count is a two-piece lognormal fitted to Epoch’s
-    5th/50th/95th percentiles, with a within-owner Gaussian-copula correlation of ρ = ${DATA.meta.rho} across chip types.
+    <p>Displayed intervals are 80% (10th–90th percentile) via Monte Carlo (${DATA.meta.n_mc.toLocaleString()} draws), for comparability with the 80% intervals used in our Chinese-company estimates: each owner × chip unit count is a two-piece lognormal fitted to the
+    5th/50th/95th percentiles Epoch publishes, with a within-owner Gaussian-copula correlation of ρ = ${DATA.meta.rho} across chip types.
     ρ was tuned so that our aggregated H100-equivalent intervals reproduce the owner-level intervals Epoch itself publishes
     (independence would give intervals roughly 40% too narrow). Spec ratios are treated as exact, so the intervals carry Epoch’s
     unit-count uncertainty only, not chip-spec or precision-choice uncertainty. Epoch gives no interval for xAI.</p>
@@ -805,7 +805,7 @@ function applyCompanies(companies) {
   for (const c of companies) {
     const modes = {};
     for (const [src_m, dst] of [["fp8", "train_fp8"], ["fp4", "train_fp4"], ["bw", "inference"]]) {
-      modes[dst] = { median: c.modes[src_m].median, p5: c.modes[src_m].p10, p95: c.modes[src_m].p90 };
+      modes[dst] = { median: c.modes[src_m].median, lo: c.modes[src_m].p10, hi: c.modes[src_m].p90 };
     }
     const chips = {};
     // Scale weights so chip values sum exactly to the MC median (weights are

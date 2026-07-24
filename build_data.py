@@ -165,7 +165,9 @@ for o in US_OWNERS:
         if has_ci:
             sums = sorted(sum(draws[rw["chip"]][i] * ratios[rw["chip"]] for rw in rws)
                           for i in range(N_MC))
-            m["p5"], m["p95"] = pct(sums, 0.05), pct(sums, 0.95)
+            # Displayed intervals are 80% (p10-p90) for comparability with the
+            # Chinese-company 80% CIs; Epoch's own inputs are 5th/50th/95th.
+            m["lo"], m["hi"] = pct(sums, 0.10), pct(sums, 0.90)
         entry["modes"][mode] = m
         for rw in rws:
             entry["chips"].setdefault(rw["chip"], {"units": rw["units_med"]})[mode] = rw["units_med"] * ratios[rw["chip"]]
@@ -187,7 +189,7 @@ for e in result["owners"]:
     for mode in MODES:
         m = e["modes"][mode]
         if e["has_ci"]:
-            cells.append(f"{m['median']/1e3:7.0f} [{m['p5']/1e3:.0f}-{m['p95']/1e3:.0f}]")
+            cells.append(f"{m['median']/1e3:7.0f} [{m['lo']/1e3:.0f}-{m['hi']/1e3:.0f}]")
         else:
             cells.append(f"{m['median']/1e3:7.0f} [no CI]")
     print(f"{e['owner']:<11} {cells[0]:>24} {cells[1]:>22} {cells[2]:>22}")

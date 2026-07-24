@@ -128,24 +128,24 @@ ov_vals = [
     ["How this estimate works. Epoch AI publishes cumulative installed-base unit counts per owner and chip type (tab 3, values with source links). "
      "Each chip type gets a GB300e conversion ratio from its specifications (tab 2): the chip's spec divided by the GB300 reference — 5,000 dense FP8 TFLOP/s, 15,000 dense FP4 TFLOP/s, or 8 TB/s of memory bandwidth, depending on the toggle mode. "
      "Owner totals below are formulas that add units × ratio over the owner's chips; nothing in the median columns is hand-entered."],
-    ["Method note (confidence intervals). The p5/p95 columns are Monte Carlo outputs, not formulas: 20,000 draws per owner from two-piece lognormals fitted to Epoch's per-chip 5th/50th/95th unit percentiles, "
+    ["Method note (confidence intervals). The p10/p90 columns are 80% intervals — reported at 80% for comparability with our Chinese-company estimates, though Epoch publishes 5th/50th/95th percentiles. They are Monte Carlo outputs, not formulas: 20,000 draws per owner from two-piece lognormals fitted to Epoch's per-chip unit percentiles, "
      f"with a shared within-owner correlation factor (Gaussian copula, rho = {rho}) tuned so the aggregated intervals match Epoch's own published owner-by-designer H100e intervals. Independence would give intervals about 40% too narrow. "
      f"Intervals computed {pulled[:10]}; re-running build_data.py then make_epoch_sheet.py in ~/research/us-owners-gb300e/ refreshes them — if a unit count in tab 3 is edited by hand, the intervals go stale until then. "
      "xAI has no interval because Epoch publishes only a point estimate."],
     [],
     ["Table 1: EOY-2025 installed base by owner (GB300e). Mode = which GB300 spec the conversion divides by — dense FP8 FLOP/s, dense FP4 FLOP/s, or memory bandwidth — matching the toggle on the figure."],
-    ["Owner", "FP8 mode — p5", "FP8 mode — median", "FP8 mode — p95",
+    ["Owner", "FP8 mode — p10", "FP8 mode — median", "FP8 mode — p90",
      "FP4 mode — median", "BW mode — median", "Interval basis"],
 ]
 for i, o in enumerate(US_OWNERS):
     rr = 8 + i
     e = mc[o]
-    p5 = round(e["modes"]["train_fp8"].get("p5", 0)) or ""
-    p95 = round(e["modes"]["train_fp8"].get("p95", 0)) or ""
+    lo = round(e["modes"]["train_fp8"].get("lo", 0)) or ""
+    hi = round(e["modes"]["train_fp8"].get("hi", 0)) or ""
     ov_vals.append([
-        o, p5, f"={C}!F{subtotal_row[o]}", p95,
+        o, lo, f"={C}!F{subtotal_row[o]}", hi,
         f"={C}!G{subtotal_row[o]}", f"={C}!H{subtotal_row[o]}",
-        "90% CI, Monte Carlo" if e["has_ci"] else "Point estimate — Epoch publishes no CI",
+        "80% CI, Monte Carlo" if e["has_ci"] else "Point estimate — Epoch publishes no CI",
     ])
 ov_vals.append([])
 ov_vals.append([f"US total", "", f"=SUM(C8:C{7 + len(US_OWNERS)})", "", f"=SUM(E8:E{7 + len(US_OWNERS)})", f"=SUM(F8:F{7 + len(US_OWNERS)})",
