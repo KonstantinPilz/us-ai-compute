@@ -169,7 +169,7 @@
 
   <p class="mode-note" id="mode-note"></p>
   <p id="cn-legend"><span class="sw" style="background:var(--bar)"></span>US owners (Epoch AI, 90% CIs)
-  <span class="sw" style="background:var(--bar-cn)"></span>Chinese companies (internal model, 80% CIs)</p>
+  <span class="sw" style="background:var(--bar-cn)"></span>Chinese companies (internal model, 80% CIs, owned compute only)</p>
   <div id="chart"></div>
   <div id="tooltip" aria-hidden="true"></div>
 
@@ -449,8 +449,8 @@ function showTip(o, ev) {
     .sort((a, b) => b.v - a.v);
   let html = `<h3>${o.owner} — ${fmtM(m.median)} GB300e</h3>`;
   if (o.cn) {
-    html += `<p class="tt-ci">80% CI: ${fmtM(m.p5)}–${fmtM(m.p95)} · owned ${fmtM(o.owned)} / rented ${fmtM(o.rented)}` +
-            ` · onshore ${fmtM(o.onshore)} / offshore ${fmtM(o.offshore)} (FP8-basis medians)</p>`;
+    html += `<p class="tt-ci">80% CI: ${fmtM(m.p5)}–${fmtM(m.p95)} · owned compute only` +
+            (o.rented > 0 ? ` — rented access adds ~${fmtM(o.rented)} (total ~${fmtM(o.total_median)}, FP8-basis medians)` : ` — no rented access modeled`) + `</p>`;
   } else {
     html += `<p class="tt-ci">${o.has_ci ? `90% CI: ${fmtM(m.p5)}–${fmtM(m.p95)}` : "Point estimate — Epoch publishes no CI"}</p>`;
   }
@@ -817,7 +817,7 @@ function applyCompanies(companies) {
                           inference: ch.mbw ? ch.w * scale * ch.mbw : 0 };
     }
     extraOwners.push({ owner: c.name, cn: true, has_ci: true, modes, chips,
-                       owned: c.owned, rented: c.rented, onshore: c.onshore, offshore: c.offshore,
+                       owned: c.owned, rented: c.rented, total_median: c.total_median,
                        factors: c.factors, bw_coverage: c.bw_coverage });
   }
   document.getElementById("cn-legend").style.display = "block";
