@@ -75,11 +75,11 @@ chip_row = {c: 7 + i for i, c in enumerate(chips)}   # spec-tab data rows (1-ind
 S = "'2. Chip specs & ratios'"
 specs_vals = [
     ["Table 2: Chip specifications and GB300e conversion ratios"],
-    ["Each chip is converted at spec ÷ GB300 reference (row 4). FP8 mode uses dense FP8 FLOP/s, falling back to FP16/BF16 (Google chips: INT8). FP4 mode uses dense FP4 where the chip has it, otherwise the FP8-basis value (so a non-FP4 chip is worth 1/3 of its FP8-mode value). Memory-bandwidth mode uses HBM bandwidth."],
+    ["Each chip is converted at spec ÷ GB300 reference (row 4). FP8 mode uses dense FP8 FLOP/s, falling back to FP16/BF16 (Google chips: INT8). FP4 mode uses dense FP4 where the chip has it, otherwise the FP8-basis value (so a non-FP4 chip is worth 1/3 of its FP8-mode value). Memory-bandwidth mode uses HBM bandwidth. Judgment call: Epoch's B200 and B300 owner buckets are valued at GB200-class (5,000 FP8 / 10,000 FP4 / 8 TB/s) and GB300-class (5,000 / 15,000 / 8) specs rather than Epoch's standalone B200/B300 rows (4,500 / 9,000 / 7.7) — matching the H100-equivalent ratios Epoch itself applies to those buckets, which imply rack-scale GB-class GPUs. Using the standalone specs instead would lower the US FP8 total by about 4%."],
     [],
     ["GB300 reference (denominators)", "FP8 dense TFLOP/s", 5000, "FP4 dense TFLOP/s", 15000, "Memory bandwidth TB/s", 8],
     [],
-    ["Chip", "Dense FP8-basis TFLOP/s", "FP8 basis", "Dense FP4 TFLOP/s", "FP4 basis", "Memory BW (TB/s)", "BW note",
+    ["Chip", "Effective dense throughput (TFLOP/s or TOPS; basis in next column)", "FP8 basis", "Dense FP4 TFLOP/s", "FP4 basis", "Memory BW (TB/s)", "BW note",
      "GB300e per chip — FP8 mode", "GB300e per chip — FP4 mode", "GB300e per chip — BW mode", "Spec source"],
 ]
 for i, c in enumerate(chips):
@@ -130,9 +130,10 @@ ov_vals = [
      "Owner totals below are formulas that add units × ratio over the owner's chips; nothing in the median columns is hand-entered."],
     ["Method note (confidence intervals). The p5/p95 columns are Monte Carlo outputs, not formulas: 20,000 draws per owner from two-piece lognormals fitted to Epoch's per-chip 5th/50th/95th unit percentiles, "
      f"with a shared within-owner correlation factor (Gaussian copula, rho = {rho}) tuned so the aggregated intervals match Epoch's own published owner-by-designer H100e intervals. Independence would give intervals about 40% too narrow. "
-     "Re-running build_data.py + make_epoch_sheet.py refreshes them. xAI has no interval because Epoch publishes only a point estimate."],
+     f"Intervals computed {pulled[:10]}; re-running build_data.py then make_epoch_sheet.py in ~/research/us-owners-gb300e/ refreshes them — if a unit count in tab 3 is edited by hand, the intervals go stale until then. "
+     "xAI has no interval because Epoch publishes only a point estimate."],
     [],
-    ["Table 1: EOY-2025 installed base by owner (GB300e)"],
+    ["Table 1: EOY-2025 installed base by owner (GB300e). Mode = which GB300 spec the conversion divides by — dense FP8 FLOP/s, dense FP4 FLOP/s, or memory bandwidth — matching the toggle on the figure."],
     ["Owner", "FP8 mode — p5", "FP8 mode — median", "FP8 mode — p95",
      "FP4 mode — median", "BW mode — median", "Interval basis"],
 ]
@@ -147,7 +148,8 @@ for i, o in enumerate(US_OWNERS):
         "90% CI, Monte Carlo" if e["has_ci"] else "Point estimate — Epoch publishes no CI",
     ])
 ov_vals.append([])
-ov_vals.append([f"US total", "", f"=SUM(C8:C{7 + len(US_OWNERS)})", "", f"=SUM(E8:E{7 + len(US_OWNERS)})", f"=SUM(F8:F{7 + len(US_OWNERS)})", ""])
+ov_vals.append([f"US total", "", f"=SUM(C8:C{7 + len(US_OWNERS)})", "", f"=SUM(E8:E{7 + len(US_OWNERS)})", f"=SUM(F8:F{7 + len(US_OWNERS)})",
+                "No aggregated interval — per-owner intervals are not summed"])
 
 # ================= create / rewrite spreadsheet =================
 tok = token()
