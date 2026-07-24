@@ -140,7 +140,7 @@
     <header>
       <div>
         <h2>AI chip production, US vs China</h2>
-        <p class="subtitle">Annual shipments in GB300-equivalents — stacked by vendor; 2025–27 are TrendForce forecasts</p>
+        <p class="subtitle">Annual shipments in GB300-equivalents, US total vs China total; 2025–27 are TrendForce forecasts</p>
       </div>
       <select id="tf-mode-select" aria-label="Conversion mode">
         <option value="train_fp8" selected>FP8 FLOP/s</option>
@@ -149,9 +149,8 @@
       </select>
     </header>
     <p class="mode-note" id="tf-mode-note"></p>
-    <p id="tf-legend"><span class="sw" style="background:var(--bar)"></span>US vendors
-    <span class="sw" style="background:var(--bar-cn)"></span>Chinese vendors
-    <span style="margin-left:10px">Segments = vendors; hover a bar for the chip-level breakdown.</span></p>
+    <p id="tf-legend"><span class="sw" style="background:var(--bar)"></span>US vendors (total)
+    <span class="sw" style="background:var(--bar-cn)"></span>Chinese vendors (total)</p>
     <div id="tf-chart"></div>
     <p class="fine" id="tf-fine"></p>
   </section>
@@ -174,7 +173,7 @@
   <div id="tooltip" aria-hidden="true"></div>
 
   <p class="fine">
-    * Epoch publishes a point estimate only for xAI, so its bar has no interval.
+    Epoch publishes a point estimate only for xAI, so its bar has no interval.
     US owners only — Epoch’s PRC aggregate and global “Other” bucket are excluded. Counts are cumulative chips ever
     installed, without retirement adjustment. Hover or tap a bar for the chip-level breakdown.
   </p>
@@ -361,7 +360,7 @@ function renderRows(owners, animate) {
       r.val.setAttribute("x", x95 + 7);
     } else {
       r.wh.setAttribute("d", "");
-      r.val.textContent = fmtM(m.median) + "*";
+      r.val.textContent = fmtM(m.median);
       r.val.setAttribute("x", x(m.median) + 7);
     }
     r.val.setAttribute("y", 4);
@@ -771,29 +770,12 @@ function renderTF() {
     const x0 = b.ctry === "US" ? cx - barW - 2.5 : cx + 2.5;
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
     if (b.ctry === "CN") g.setAttribute("class", "bar-cn");
-    let cum = 0;
-    b.segs.forEach((s, i) => {
-      const yBot = ly(cum);
-      const yTop = ly(cum + s.v);
-      const hSeg = Math.max(0, yBot - yTop - (i < b.segs.length - 1 ? 1 : 0));
-      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      rect.setAttribute("class", "seg-rect");
-      rect.setAttribute("x", x0); rect.setAttribute("y", yTop);
-      rect.setAttribute("width", barW); rect.setAttribute("height", hSeg);
-      rect.setAttribute("fill-opacity", SEG_OPACITY[Math.min(i, SEG_OPACITY.length - 1)]);
-      g.appendChild(rect);
-      if (yBot - yTop >= 13) {
-        const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        const op = SEG_OPACITY[Math.min(i, SEG_OPACITY.length - 1)];
-        t.setAttribute("class", "seg-label " + (op >= 0.7 ? "on-dark" : "on-light"));
-        t.setAttribute("x", x0 + barW / 2); t.setAttribute("y", (yTop + yBot) / 2 + 3);
-        t.setAttribute("text-anchor", "middle");
-        t.setAttribute("font-size", "8.5");
-        t.textContent = s.vendor.length * 5 < barW ? s.vendor : s.vendor.slice(0, 4);
-        g.appendChild(t);
-      }
-      cum += s.v;
-    });
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("class", "seg-rect");
+    rect.setAttribute("x", x0); rect.setAttribute("y", ly(b.total));
+    rect.setAttribute("width", barW);
+    rect.setAttribute("height", Math.max(0.75, T + plotH - ly(b.total)));
+    g.appendChild(rect);
     const val = document.createElementNS("http://www.w3.org/2000/svg", "text");
     val.setAttribute("class", "value-label");
     val.setAttribute("x", x0 + barW / 2); val.setAttribute("y", ly(b.total) - 4);
@@ -823,19 +805,9 @@ function renderTF() {
   document.getElementById("tf-mode-note").textContent = TF_NOTES[tfMode];
 }
 function showTfTip(b, ev) {
-  const tf = labsPayload.tf;
-  const chips = tf.chips
-    .map(c => ({ c, v: c.country === b.ctry ? tfChipVal(c, b.j, tfMode) : null }))
-    .filter(x => x.v != null && x.v > 0)
-    .sort((a, x) => x.v - a.v);
-  let html = `<h3>${b.ctry === "US" ? "United States" : "China"} ${b.year} \u2014 ${fmtM(b.total)} GB300e</h3>`;
-  html += `<table>`;
-  for (const { c, v } of chips.slice(0, 14)) {
-    html += `<tr><td>${c.vendor} ${c.chip}</td><td>${fmtUnits(c.units[b.j] * 1000)} chips</td>` +
-            `<td>${fmtM(v)} \u00b7 ${Math.round(v / b.total * 100)}%</td></tr>`;
-  }
-  if (chips.length > 14) html += `<tr><td colspan="3">\u2026 ${chips.length - 14} more</td></tr>`;
-  html += `<tr class="tt-total"><td>Total</td><td></td><td>${fmtM(b.total)}</td></tr></table>`;
+  const us = b.ctry === "US";
+  let html = `<h3>${us ? "United States" : "China"} ${b.year} \u2014 ${fmtM(b.total)} GB300e</h3>`;
+  html += `<p class="tt-ci">${us ? "NVIDIA, Google, Amazon, AMD, Intel, Microsoft, Meta" : "Huawei + Cambricon"} \u00b7 chips designed by ${us ? "US" : "Chinese"} vendors, shipped in ${b.year.replace("F", "")}</p>`;
   if (tfMode === "inference" && b.cov < 0.995) {
     html += `<p class="tt-src">Bandwidth specs cover ${Math.round(b.cov * 100)}% of this bar\u2019s FP8-basis total \u2014 unannounced chips excluded</p>`;
   }
