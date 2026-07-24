@@ -486,23 +486,7 @@ window.addEventListener("resize", () => { render(false); if (labsPayload && labs
 
 // ---- Methodology section ----
 function buildMethod() {
-  const s = DATA.meta.specs;
   const g = DATA.meta.gb300;
-  const chipOrder = Object.keys(s).sort();
-  let specRows = "";
-  for (const c of chipOrder) {
-    const p = s[c];
-    specRows += `<tr><td>${c}</td><td>${p.fp8_tflops.toLocaleString()} (${p.fp8_label})</td>` +
-      `<td>${p.fp4_tflops.toLocaleString()} (${p.fp4_label})</td>` +
-      `<td>${p.bw_tbs}${p.bw_note ? " — " + p.bw_note : ""}</td></tr>`;
-  }
-  let dataRows = "";
-  for (const o of DATA.owners) {
-    const c = m => o.has_ci
-      ? `${fmtM(o.modes[m].median)} [${fmtM(o.modes[m].p5)}–${fmtM(o.modes[m].p95)}]`
-      : `${fmtM(o.modes[m].median)} (no CI)`;
-    dataRows += `<tr><td>${o.owner}</td><td>${c("train_fp8")}</td><td>${c("train_fp4")}</td><td>${c("inference")}</td></tr>`;
-  }
   document.getElementById("method").innerHTML = `
     <h4>What is shown</h4>
     <p>Each bar is one owner’s cumulative installed base of AI chips at the end of 2025, converted to GB300 equivalents (GB300e).
@@ -524,11 +508,7 @@ function buildMethod() {
     MI355X FP8/FP4 (5,033 / 10,066 TFLOP/s dense, per <a href="https://www.amd.com/en/products/accelerators/instinct/mi350/mi355x.html">AMD</a>).
     Epoch’s “B200” and “B300” owner buckets are valued at GB200- and GB300-class specs, matching the H100-equivalent ratios Epoch itself applies to those buckets.</p>
 
-    <div class="tablewrap"><table>
-      <tr><th>Chip bucket</th><th>FP8 mode — TFLOP/s used</th><th>FP4 mode — TFLOP/s used</th><th>Mem BW, TB/s</th></tr>
-      ${specRows}
-      <tr><td><strong>GB300 (reference)</strong></td><td>${(g.fp8_pflops * 1000).toLocaleString()} (FP8)</td><td>${(g.fp4_pflops * 1000).toLocaleString()} (FP4)</td><td>${g.bw_tbs}</td></tr>
-    </table></div>
+    <p id="method-sheet-note">The full per-chip conversion table and the per-owner data table live in a companion spreadsheet (internal).</p>
 
     <h4>Confidence intervals</h4>
     <p>90% intervals (5th–95th percentile) via Monte Carlo (${DATA.meta.n_mc.toLocaleString()} draws): each owner × chip unit count is a two-piece lognormal fitted to Epoch’s
@@ -545,11 +525,7 @@ function buildMethod() {
       <li>Counts are chips an owner has bought for its own fleet; chips rented from clouds are not reassigned to the renter (e.g., OpenAI and Anthropic compute sits inside Microsoft, Oracle, Google, Amazon, and CoreWeave bars).</li>
     </ul>
 
-    <h4>Data table (GB300e, median [90% CI])</h4>
-    <div class="tablewrap"><table>
-      <tr><th>Owner</th><th>FP8 FLOP/s</th><th>FP4 FLOP/s</th><th>Memory Bandwidth</th></tr>
-      ${dataRows}
-    </table></div>`;
+`;
 }
 
 document.getElementById("pulled").textContent = DATA.meta.pulled;
@@ -863,6 +839,11 @@ async function labsUnlock(pw, remember) {
     document.getElementById("labs-body").style.display = "";
     document.getElementById("labs-mode-select").style.display = "";
     applyCompanies(labsPayload.companies);
+    if (labsPayload.epoch_sheet_url) {
+      document.getElementById("method-sheet-note").innerHTML =
+        `The full per-chip conversion table and the per-owner data table live in the companion sheet
+        <a href="${labsPayload.epoch_sheet_url}">US AI Chip Owners \u2014 GB300e Conversions</a> (all conversions as live formulas).`;
+    }
     if (labsPayload.tf) {
       document.getElementById("tf").style.display = "";
       document.getElementById("tf-fine").innerHTML =
