@@ -75,9 +75,11 @@
 
   .bar-rect { fill: var(--bar); transition: width .45s ease, x .45s ease; }
   .bar-cn .bar-rect, .bar-cn .seg-rect { fill: var(--bar-cn); }
-  #cn-legend { display: none; color: var(--text-2); font-size: 12px; margin: 6px 0 0; line-height: 1.5; }
-  #cn-legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 10px; vertical-align: -1px; }
-  #cn-legend .sw:first-child { margin-left: 0; }
+  #cn-legend { display: none; }
+  #cn-legend, #tf-legend { color: var(--text-2); font-size: 12px; margin: 6px 0 0; line-height: 1.5; }
+  #cn-legend .sw, #tf-legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 10px; vertical-align: -1px; }
+  #cn-legend .sw:first-child, #tf-legend .sw:first-child { margin-left: 0; }
+  #tf-mode-select { font: inherit; font-size: 13px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); }
   .row-g { transition: transform .45s ease; }
   .seg-rect { fill: var(--bar); pointer-events: none; }
   .seg-label { font-size: 10.5px; font-weight: 700; pointer-events: none; }
@@ -134,6 +136,25 @@
 </head>
 <body>
 <div class="wrap">
+  <section id="tf" style="display:none">
+    <header>
+      <div>
+        <h2>AI chip production, US vs China</h2>
+        <p class="subtitle">Annual shipments in GB300-equivalents — log scale, stacked by vendor; 2025–27 are TrendForce forecasts</p>
+      </div>
+      <select id="tf-mode-select" aria-label="Conversion mode">
+        <option value="train_fp8" selected>FP8 FLOP/s</option>
+        <option value="train_fp4">FP4 FLOP/s</option>
+        <option value="inference">Memory Bandwidth</option>
+      </select>
+    </header>
+    <p class="mode-note" id="tf-mode-note"></p>
+    <p id="tf-legend"><span class="sw" style="background:var(--bar)"></span>US vendors
+    <span class="sw" style="background:var(--bar-cn)"></span>Chinese vendors
+    <span style="margin-left:10px">Segments = vendors; hover a bar for the chip-level breakdown.</span></p>
+    <div id="tf-chart"></div>
+    <p class="fine" id="tf-fine"></p>
+  </section>
   <header>
     <div>
       <h1>US AI chip owners, end of 2025</h1>
@@ -189,6 +210,7 @@
       <p class="fine" id="labs-fine"></p>
     </div>
   </section>
+
 
   <footer>
     Chart: a team of Konstantin’s Claudes ·
@@ -461,7 +483,7 @@ document.getElementById("mode-select").addEventListener("change", ev => {
   hideTip();
   render(true);
 });
-window.addEventListener("resize", () => render(false));
+window.addEventListener("resize", () => { render(false); if (labsPayload && labsPayload.tf) renderTF(); });
 
 // ---- Methodology section ----
 function buildMethod() {
@@ -679,6 +701,158 @@ function showLabsTip(l, ev) {
   tooltipEl.style.top = ty + "px";
 }
 
+let tfMode = "train_fp8";
+const TF_NOTES = {
+  train_fp8: "Conversion: chip\u2019s dense FP8-basis FLOP/s \u00d7 units shipped \u00f7 GB300 FP8 (5 PFLOP/s).",
+  train_fp4: "Conversion: dense FP4 \u00d7 units \u00f7 GB300 FP4 (15 PFLOP/s); chips without FP4 hardware fall back to FP8-basis \u00f7 3.",
+  inference: "Conversion: memory bandwidth \u00d7 units \u00f7 GB300\u2019s 8 TB/s. Chips without a sourced bandwidth spec are excluded \u2014 tooltips disclose coverage.",
+};
+function tfChipVal(c, j, mode) {
+  const fp8 = c.h100e[j] * 1000 / 2.5265;
+  if (mode === "train_fp8") return fp8;
+  if (mode === "train_fp4") return c.fp4 ? c.units[j] * 1000 * c.fp4 / 15000 : fp8 / 3;
+  return c.bw != null ? c.units[j] * 1000 * c.bw / 8 : null;
+}
+function renderTF() {
+  const tf = labsPayload && labsPayload.tf;
+  if (!tf) return;
+  const el = document.getElementById("tf-chart");
+  el.innerHTML = "";
+  const bars = [];
+  tf.years.forEach((year, j) => {
+    for (const ctry of ["US", "CN"]) {
+      let excludedFp8 = 0, fp8tot = 0;
+      const byVendor = {};
+      for (const c of tf.chips) {
+        if (c.country !== ctry) continue;
+        const f8 = tfChipVal(c, j, "train_fp8");
+        fp8tot += f8;
+        const v = tfChipVal(c, j, tfMode);
+        if (v == null) { excludedFp8 += f8; continue; }
+        if (v > 0) byVendor[c.vendor] = (byVendor[c.vendor] || 0) + v;
+      }
+      const segs = tf.vendors.map(vn => ({ vendor: vn, v: byVendor[vn] || 0 })).filter(s => s.v > 0);
+      bars.push({ year, j, ctry, segs, total: segs.reduce((s, x) => s + x.v, 0),
+                  cov: fp8tot > 0 ? 1 - excludedFp8 / fp8tot : 1 });
+    }
+  });
+  const MINV = 1e3;
+  const maxV = Math.max(...bars.map(b => b.total)) * 1.25;
+  const W = Math.min(el.clientWidth || 628, 660);
+  const L = 46, R = 8, T = 34, B = 24, H = 338;
+  const plotW = W - L - R, plotH = H - T - B;
+  const ly = v => T + plotH - (Math.log10(Math.max(v, MINV)) - 3) / (Math.log10(maxV) - 3) * plotH;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("width", "100%"); svg.setAttribute("height", H);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "US vs China AI chip production by year, log scale");
+  // decade gridlines
+  for (let e = 3; Math.pow(10, e) <= maxV; e++) {
+    const v = Math.pow(10, e);
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("class", e === 3 ? "zero-line" : "grid-line");
+    line.setAttribute("x1", L); line.setAttribute("x2", W - R);
+    line.setAttribute("y1", ly(v)); line.setAttribute("y2", ly(v));
+    svg.appendChild(line);
+    const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t.setAttribute("class", "axis-label"); t.setAttribute("x", L - 5);
+    t.setAttribute("y", ly(v) + 3.5); t.setAttribute("text-anchor", "end");
+    t.textContent = fmtTick(v);
+    svg.appendChild(t);
+  }
+  const unit = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  unit.setAttribute("class", "axis-label"); unit.setAttribute("x", W - R);
+  unit.setAttribute("y", 12); unit.setAttribute("text-anchor", "end");
+  unit.textContent = "GB300e (log scale)";
+  svg.appendChild(unit);
+  const slotW = plotW / tf.years.length;
+  const barW = Math.min(34, slotW * 0.34);
+  bars.forEach(b => {
+    const cx = L + b.j * slotW + slotW / 2;
+    const x0 = b.ctry === "US" ? cx - barW - 2.5 : cx + 2.5;
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    if (b.ctry === "CN") g.setAttribute("class", "bar-cn");
+    let cum = 0;
+    b.segs.forEach((s, i) => {
+      const yBot = cum <= MINV ? T + plotH : ly(cum);
+      const yTop = ly(cum + s.v);
+      const hSeg = Math.max(0, yBot - yTop - (i < b.segs.length - 1 ? 1 : 0));
+      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      rect.setAttribute("class", "seg-rect");
+      rect.setAttribute("x", x0); rect.setAttribute("y", yTop);
+      rect.setAttribute("width", barW); rect.setAttribute("height", hSeg);
+      rect.setAttribute("fill-opacity", SEG_OPACITY[Math.min(i, SEG_OPACITY.length - 1)]);
+      g.appendChild(rect);
+      if (yBot - yTop >= 13) {
+        const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        const op = SEG_OPACITY[Math.min(i, SEG_OPACITY.length - 1)];
+        t.setAttribute("class", "seg-label " + (op >= 0.7 ? "on-dark" : "on-light"));
+        t.setAttribute("x", x0 + barW / 2); t.setAttribute("y", (yTop + yBot) / 2 + 3);
+        t.setAttribute("text-anchor", "middle");
+        t.setAttribute("font-size", "8.5");
+        t.textContent = s.vendor.length * 5 < barW ? s.vendor : s.vendor.slice(0, 4);
+        g.appendChild(t);
+      }
+      cum += s.v;
+    });
+    const val = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    val.setAttribute("class", "value-label");
+    val.setAttribute("x", x0 + barW / 2); val.setAttribute("y", ly(b.total) - 4);
+    val.setAttribute("text-anchor", "middle");
+    val.setAttribute("font-size", "10");
+    val.textContent = fmtM(b.total);
+    g.appendChild(val);
+    const hit = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    hit.setAttribute("x", x0 - 2); hit.setAttribute("y", T);
+    hit.setAttribute("width", barW + 4); hit.setAttribute("height", plotH);
+    hit.setAttribute("fill", "transparent");
+    hit.addEventListener("mousemove", ev => showTfTip(b, ev));
+    hit.addEventListener("click", ev => showTfTip(b, ev));
+    hit.addEventListener("mouseleave", hideTip);
+    g.appendChild(hit);
+    svg.appendChild(g);
+  });
+  tf.years.forEach((year, j) => {
+    const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t.setAttribute("class", "axis-label");
+    t.setAttribute("x", L + j * slotW + slotW / 2); t.setAttribute("y", H - 8);
+    t.setAttribute("text-anchor", "middle");
+    t.textContent = year;
+    svg.appendChild(t);
+  });
+  el.appendChild(svg);
+  document.getElementById("tf-mode-note").textContent = TF_NOTES[tfMode];
+}
+function showTfTip(b, ev) {
+  const tf = labsPayload.tf;
+  const chips = tf.chips
+    .map(c => ({ c, v: c.country === b.ctry ? tfChipVal(c, b.j, tfMode) : null }))
+    .filter(x => x.v != null && x.v > 0)
+    .sort((a, x) => x.v - a.v);
+  let html = `<h3>${b.ctry === "US" ? "United States" : "China"} ${b.year} \u2014 ${fmtM(b.total)} GB300e</h3>`;
+  html += `<table>`;
+  for (const { c, v } of chips.slice(0, 14)) {
+    html += `<tr><td>${c.vendor} ${c.chip}</td><td>${fmtUnits(c.units[b.j] * 1000)} chips</td>` +
+            `<td>${fmtM(v)} \u00b7 ${Math.round(v / b.total * 100)}%</td></tr>`;
+  }
+  if (chips.length > 14) html += `<tr><td colspan="3">\u2026 ${chips.length - 14} more</td></tr>`;
+  html += `<tr class="tt-total"><td>Total</td><td></td><td>${fmtM(b.total)}</td></tr></table>`;
+  if (tfMode === "inference" && b.cov < 0.995) {
+    html += `<p class="tt-src">Bandwidth specs cover ${Math.round(b.cov * 100)}% of this bar\u2019s FP8-basis total \u2014 unannounced chips excluded</p>`;
+  }
+  tooltipEl.innerHTML = html;
+  tooltipEl.style.display = "block";
+  const tw = tooltipEl.offsetWidth, th = tooltipEl.offsetHeight;
+  let tx = ev.clientX + 12, ty = ev.clientY + 10;
+  if (tx + tw > window.innerWidth - 8) tx = ev.clientX - tw - 12;
+  if (ty + th > window.innerHeight - 8) ty = ev.clientY - th - 10;
+  tooltipEl.style.left = tx + "px"; tooltipEl.style.top = ty + "px";
+}
+document.getElementById("tf-mode-select").addEventListener("change", ev => {
+  tfMode = ev.target.value; hideTip(); renderTF();
+});
+
 function applyCompanies(companies) {
   if (!companies || extraOwners.length) return;
   for (const c of companies) {
@@ -719,6 +893,16 @@ async function labsUnlock(pw, remember) {
     document.getElementById("labs-body").style.display = "";
     document.getElementById("labs-mode-select").style.display = "";
     applyCompanies(labsPayload.companies);
+    if (labsPayload.tf) {
+      document.getElementById("tf").style.display = "";
+      document.getElementById("tf-fine").innerHTML =
+        `Source: <a href="${labsPayload.tf.sheet_url}">TrendForce, AI Chips Shipment Forecast 2022\u20132027F (July 2026 delivery; internal H100e conversion sheet)</a>.
+        Licensed for internal use \u2014 do not publish chip- or vendor-level detail. Units are chips shipped (sold), not deployed;
+        GB200/GB300/VR200 rows count individual GPUs. 2025\u20132027 are TrendForce forecasts (F).
+        China = Huawei + Cambricon (chips designed by Chinese vendors, wherever fabbed); US = NVIDIA, Google, Amazon, AMD, Intel, Microsoft, Meta.
+        Log y-axis starting at 1k GB300e \u2014 segment heights are not proportional to volume.`;
+      renderTF();
+    }
     renderLabs();
   } catch (e) {
     localStorage.removeItem("labs_pw");
