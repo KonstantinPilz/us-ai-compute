@@ -140,7 +140,7 @@
     <header>
       <div>
         <h2>AI chip production, US vs China</h2>
-        <p class="subtitle">Annual shipments in GB300-equivalents — log scale, stacked by vendor; 2025–27 are TrendForce forecasts</p>
+        <p class="subtitle">Annual shipments in GB300-equivalents — stacked by vendor; 2025–27 are TrendForce forecasts</p>
       </div>
       <select id="tf-mode-select" aria-label="Conversion mode">
         <option value="train_fp8" selected>FP8 FLOP/s</option>
@@ -736,35 +736,33 @@ function renderTF() {
                   cov: fp8tot > 0 ? 1 - excludedFp8 / fp8tot : 1 });
     }
   });
-  const MINV = 1e3;
-  const maxV = Math.max(...bars.map(b => b.total)) * 1.25;
+  const maxV = Math.max(...bars.map(b => b.total)) * 1.12;
   const W = Math.min(el.clientWidth || 628, 660);
   const L = 46, R = 8, T = 34, B = 24, H = 338;
   const plotW = W - L - R, plotH = H - T - B;
-  const ly = v => T + plotH - (Math.log10(Math.max(v, MINV)) - 3) / (Math.log10(maxV) - 3) * plotH;
+  const ly = v => T + plotH - (v / maxV) * plotH;
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   svg.setAttribute("width", "100%"); svg.setAttribute("height", H);
   svg.setAttribute("role", "img");
-  svg.setAttribute("aria-label", "US vs China AI chip production by year, log scale");
-  // decade gridlines
-  for (let e = 3; Math.pow(10, e) <= maxV; e++) {
-    const v = Math.pow(10, e);
+  svg.setAttribute("aria-label", "US vs China AI chip production by year");
+  const step = niceStep(maxV);
+  for (let v = 0; v <= maxV; v += step) {
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("class", e === 3 ? "zero-line" : "grid-line");
+    line.setAttribute("class", v === 0 ? "zero-line" : "grid-line");
     line.setAttribute("x1", L); line.setAttribute("x2", W - R);
     line.setAttribute("y1", ly(v)); line.setAttribute("y2", ly(v));
     svg.appendChild(line);
     const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
     t.setAttribute("class", "axis-label"); t.setAttribute("x", L - 5);
     t.setAttribute("y", ly(v) + 3.5); t.setAttribute("text-anchor", "end");
-    t.textContent = fmtTick(v);
+    t.textContent = v === 0 ? "0" : fmtTick(v);
     svg.appendChild(t);
   }
   const unit = document.createElementNS("http://www.w3.org/2000/svg", "text");
   unit.setAttribute("class", "axis-label"); unit.setAttribute("x", W - R);
   unit.setAttribute("y", 12); unit.setAttribute("text-anchor", "end");
-  unit.textContent = "GB300e (log scale)";
+  unit.textContent = "GB300e";
   svg.appendChild(unit);
   const slotW = plotW / tf.years.length;
   const barW = Math.min(34, slotW * 0.34);
@@ -775,7 +773,7 @@ function renderTF() {
     if (b.ctry === "CN") g.setAttribute("class", "bar-cn");
     let cum = 0;
     b.segs.forEach((s, i) => {
-      const yBot = cum <= MINV ? T + plotH : ly(cum);
+      const yBot = ly(cum);
       const yTop = ly(cum + s.v);
       const hSeg = Math.max(0, yBot - yTop - (i < b.segs.length - 1 ? 1 : 0));
       const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -899,8 +897,7 @@ async function labsUnlock(pw, remember) {
         `Source: <a href="${labsPayload.tf.sheet_url}">TrendForce, AI Chips Shipment Forecast 2022\u20132027F (July 2026 delivery; internal H100e conversion sheet)</a>.
         Licensed for internal use \u2014 do not publish chip- or vendor-level detail. Units are chips shipped (sold), not deployed;
         GB200/GB300/VR200 rows count individual GPUs. 2025\u20132027 are TrendForce forecasts (F).
-        China = Huawei + Cambricon (chips designed by Chinese vendors, wherever fabbed); US = NVIDIA, Google, Amazon, AMD, Intel, Microsoft, Meta.
-        Log y-axis starting at 1k GB300e \u2014 segment heights are not proportional to volume.`;
+        China = Huawei + Cambricon (chips designed by Chinese vendors, wherever fabbed); US = NVIDIA, Google, Amazon, AMD, Intel, Microsoft, Meta.`;
       renderTF();
     }
     renderLabs();
